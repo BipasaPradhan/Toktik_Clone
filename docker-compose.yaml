@@ -1,0 +1,39 @@
+services:
+  maria-db:
+    image: mariadb:11.7.2
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: toctik
+      MYSQL_USER: dev
+      MYSQL_PASSWORD: devpass
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mariadb -uroot -prootpass -e 'SELECT 1;'"]
+      interval: 3s
+      timeout: 5s
+      retries: 30
+      start_period: 15s
+    
+  redis:
+    image: redis:latest
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - redis_network
+    ports:
+      - "6379:6379"
+
+networks:
+  redis_network:
+    driver: bridge
+
+volumes:
+  db_data:
+    driver: local
+
