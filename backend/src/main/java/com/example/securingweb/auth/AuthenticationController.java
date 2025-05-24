@@ -1,6 +1,6 @@
 package com.example.securingweb.auth;
 
-import io.muzoo.ssc.project.backend.SimpleResponseDTO;
+import com.example.securingweb.SimpleResponseDTO;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
