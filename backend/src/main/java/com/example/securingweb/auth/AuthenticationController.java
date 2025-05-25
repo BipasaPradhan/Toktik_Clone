@@ -17,6 +17,9 @@ public class AuthenticationController {
     @Autowired
     private LoginService loginService;
 
+    @Autowired
+    private RegisterService registerService;
+
     @GetMapping("/api/test")
     public String test() {
         return "If this message is shown, it means login is successful because we didn't set to permit this path.";
@@ -58,4 +61,21 @@ public class AuthenticationController {
                     .build();
         }
     }
+
+    @PostMapping("/api/register")
+    public SimpleResponseDTO register(@RequestParam String username, @RequestParam String password, @RequestParam(required = false) String role) {
+        try {
+            registerService.register(username, password, role);
+            return SimpleResponseDTO.builder()
+                    .success(true)
+                    .message("User registered successfully")
+                    .build();
+        } catch (IllegalArgumentException e) {
+            return SimpleResponseDTO.builder()
+                    .success(false)
+                    .message(e.getMessage())
+                    .build();
+        }
+    }
+
 }
