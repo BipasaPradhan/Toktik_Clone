@@ -58,3 +58,4 @@ public class AuthenticationController {
                     .build();
         }
     }
+}
