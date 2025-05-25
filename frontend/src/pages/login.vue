@@ -36,80 +36,173 @@
     }
   }
 
-  const reset = () => {
-    form.value?.reset()
-  }
+  // const reset = () => {
+  //   form.value?.reset()
+  // }
 
 </script>
 
 <template>
-  <v-main>
-    <v-container>
-      <v-form ref="form" v-model="valid" lazy-validation>
-        <v-row class="pt-8">
-          <v-col
-            lg="6"
-            md="8"
-            offset-lg="3"
-            offset-md="2"
-            offset-sm="1"
-            offset-xl="4"
-            offset-xs="0"
-            sm="10"
-            xl="4"
-            xs="12"
+  <v-main class="auth-background">
+    <v-container
+      class="fill-height"
+      fluid
+    >
+      <v-row
+        align="center"
+        justify="center"
+      >
+        <v-col
+          cols="12"
+          lg="5"
+          md="6"
+          sm="8"
+          xl="4"
+        >
+          <v-card
+            class="auth-card"
+            elevation="4"
           >
-            <v-card class="pa-4" elevation="2">
-              <v-container>
-                <v-row>
-                  <v-col>
-                    <v-text-field
-                      v-model="username"
-                      label="Username"
-                      required
-                      :rules="usernameRules"
-                    />
-                  </v-col>
-                </v-row>
-                <v-row>
-                  <v-col>
-                    <v-text-field
-                      v-model="password"
-                      label="Password"
-                      required
-                      :rules="passwordRules"
-                      type="password"
-                    />
-                  </v-col>
-                </v-row>
-              </v-container>
+            <!-- Login Section -->
+            <div class="login-section">
+              <v-card-title class="text-center py-6">
+                <h2 class="text-h4 font-weight-bold">Login to Your Account</h2>
+              </v-card-title>
 
-              <v-card-actions>
-                <v-spacer />
-                <v-btn
-                  class="mr-4"
-                  color="success"
-                  :disabled="!valid"
-                  text
-                  @click="submit"
+              <v-card-text class="px-8 pb-2">
+                <v-form
+                  ref="form"
+                  v-model="valid"
+                  lazy-validation
                 >
-                  Login
+                  <v-text-field
+                    v-model="username"
+                    bg-color="beige-lighten-5"
+                    class="mb-4"
+                    label="Username"
+                    required
+                    :rules="usernameRules"
+                    variant="outlined"
+                  />
+
+                  <v-text-field
+                    v-model="password"
+                    bg-color="beige-lighten-5"
+                    class="mb-2"
+                    label="Password"
+                    required
+                    :rules="passwordRules"
+                    type="password"
+                    variant="outlined"
+                  />
+
+                  <v-btn
+                    block
+                    class="mt-4 mb-6 beige-signin-btn"
+                    color="burgundy"
+                    size="large"
+                    @click="submit"
+                  >
+                    SIGN IN
+                  </v-btn>
+                </v-form>
+              </v-card-text>
+            </div>
+
+            <!-- Signup Section -->
+            <div class="signup-section">
+              <v-divider class="my-4" />
+              <v-card-text class="text-center px-8 py-6 dark-burgundy-section">
+                <p class="text-body-1 mb-2 text-white">New Here?</p>
+                <p class="text-body-2 mb-4 text-white">Sign up and discover new opportunities!</p>
+                <v-btn
+                  class="beige-signup-btn"
+                  variant="outlined"
+                  @click="router.push('/register')"
+                >
+                  SIGN UP
                 </v-btn>
-                <v-btn class="mr-4" color="error" text @click="reset">
-                  Reset
-                </v-btn>
-              </v-card-actions>
-            </v-card>
-          </v-col>
-        </v-row>
-      </v-form>
+              </v-card-text>
+            </div>
+          </v-card>
+        </v-col>
+      </v-row>
     </v-container>
   </v-main>
 </template>
 
-<style scoped lang="sass">
+<style scoped lang="scss">
+.auth-background {
+  background-color: #f5f5f0;
+  min-height: 100vh;
+}
 
+.auth-card {
+  background-color: #ffffff;
+  border-radius: 16px;
+  overflow: hidden;
+
+  .v-card-title {
+    color: #800020;
+  }
+}
+
+.login-section {
+  background-color: white;
+
+  .beige-signin-btn {
+    color: #2b2119 !important;
+    background-color: #e8d8c5 !important;
+    border: 1px solid #c4b5a3 !important;
+
+    &:hover {
+      background-color: #d4c4b1 !important;
+      border-color: #a89a88 !important;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+  }
+}
+
+
+.signup-section {
+  background-color: #4a0c1a;
+  color: white;
+
+  .v-divider {
+    border-color: rgba(255, 255, 255, 0.1) !important;
+  }
+
+  .beige-signup-btn {
+    color: #2b2119 !important;
+    background-color: #e8d8c5 !important;
+    border-color: #c4b5a3 !important;
+
+    &:hover {
+      background-color: #d4c4b1 !important;
+      border-color: #a89a88 !important;
+    }
+  }
+}
+
+:deep() {
+  .v-theme--light {
+    --v-theme-burgundy: #800020;
+    --v-theme-magenta: #8b008b;
+    --v-theme-beige-lighten-5: #f5f5f0;
+    --v-theme-burgundy-darken-4: #4a0c1a;
+  }
+
+  .v-btn--variant-outlined {
+    border-color: rgba(139, 0, 139, 0.5);
+  }
+
+  .v-field--outlined {
+    --v-field-border-opacity: 0.2;
+  }
+}
 </style>
+
 
 <route lang="yaml">
 meta:
