@@ -1,10 +1,12 @@
 package com.example.securingweb.config;
 
+import com.example.securingweb.CustomUserDetailsService;
 import com.example.securingweb.SimpleResponseDTO;
 import com.example.securingweb.util.AjaxUtils;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -29,6 +31,8 @@ import java.io.IOException;
 @Configuration
 @EnableWebSecurity
 public class WebSecurityConfig {
+	@Autowired
+	private UserDetailsService userDetailsService;
 	@Bean
 	public PasswordEncoder passwordEncoder() {
 		return new BCryptPasswordEncoder();
@@ -37,12 +41,19 @@ public class WebSecurityConfig {
 	@Bean
 	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 		http.authorizeHttpRequests(auth -> auth
-				.requestMatchers("/", "/api/login", "/api/logout", "/api/whoami").permitAll()
+				.requestMatchers("/", "/api/login", "/api/logout", "/api/whoami", "/api/register").permitAll()
 				.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 				.requestMatchers("/**").authenticated()
 		).exceptionHandling(
 				ex -> ex.authenticationEntryPoint(new JsonHttp403ForbiddenEntryPoint())
-		).csrf(AbstractHttpConfigurer::disable);
+		).formLogin(form -> form
+						.loginProcessingUrl("/api/login")
+						.permitAll()
+				).logout(logout -> logout
+						.logoutUrl("/api/logout")
+						.permitAll()
+				).csrf(AbstractHttpConfigurer::disable)
+				.userDetailsService(userDetailsService);
 		return http.build();
 	}
 
