@@ -1,7 +1,8 @@
 package com.example.securingweb;
 
-import jakarta.persistence.*;
 import lombok.Data;
+import jakarta.persistence.*;
+
 
 @Entity
 @Data
