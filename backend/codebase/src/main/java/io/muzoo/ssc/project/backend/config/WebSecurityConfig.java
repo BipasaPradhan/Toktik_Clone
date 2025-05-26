@@ -2,6 +2,7 @@ package io.muzoo.ssc.project.backend.config;
 
 import io.muzoo.ssc.project.backend.SimpleResponseDTO;
 import io.muzoo.ssc.project.backend.util.AjaxUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -9,6 +10,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.AuthenticationEntryPoint;
@@ -25,7 +27,8 @@ import java.io.IOException;
 @Configuration
 @EnableWebSecurity
 public class WebSecurityConfig {
-
+    @Autowired
+    private UserDetailsService userDetailsService;
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
@@ -34,12 +37,19 @@ public class WebSecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.authorizeHttpRequests(auth -> auth
-                .requestMatchers("/", "/api/login", "/api/logout", "/api/whoami").permitAll()
-                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                .requestMatchers("/**").authenticated()
-        ).exceptionHandling(
-                ex -> ex.authenticationEntryPoint(new JsonHttp403ForbiddenEntryPoint())
-        ).csrf(AbstractHttpConfigurer::disable);
+                        .requestMatchers("/", "/api/login", "/api/logout", "/api/whoami", "/api/register").permitAll()
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers("/**").authenticated()
+                ).exceptionHandling(
+                        ex -> ex.authenticationEntryPoint(new JsonHttp403ForbiddenEntryPoint())
+                ).formLogin(form -> form
+                        .loginProcessingUrl("/api/login")
+                        .permitAll()
+                ).logout(logout -> logout
+                        .logoutUrl("/api/logout")
+                        .permitAll()
+                ).csrf(AbstractHttpConfigurer::disable)
+                .userDetailsService(userDetailsService);
         return http.build();
     }
 
