@@ -27,29 +27,22 @@ import java.io.IOException;
 @Configuration
 @EnableWebSecurity
 public class WebSecurityConfig {
-    @Autowired
-    private UserDetailsService userDetailsService;
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", "/api/login", "/api/logout", "/api/whoami", "/api/register").permitAll()
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/**").authenticated()
-                ).exceptionHandling(
-                        ex -> ex.authenticationEntryPoint(new JsonHttp403ForbiddenEntryPoint())
-                ).formLogin(form -> form
-                        .loginProcessingUrl("/api/login")
-                        .permitAll()
-                ).logout(logout -> logout
-                        .logoutUrl("/api/logout")
-                        .permitAll()
-                ).csrf(AbstractHttpConfigurer::disable)
-                .userDetailsService(userDetailsService);
+                .requestMatchers("/", "/api/login", "/api/logout", "/api/whoami", "/api/register").permitAll()
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                .requestMatchers("/**").authenticated()
+        ).exceptionHandling(
+                ex -> ex.authenticationEntryPoint(new JsonHttp403ForbiddenEntryPoint())
+        ).csrf(AbstractHttpConfigurer::disable);
         return http.build();
     }
 

@@ -1,4 +1,4 @@
-package io.muzoo.ssc.project.backend.auth;
+package io.muzoo.ssc.project.backend.user;
 
 import io.muzoo.ssc.project.backend.User;
 import io.muzoo.ssc.project.backend.UserRepository;

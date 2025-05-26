@@ -10,9 +10,22 @@
   const username = ref('')
   const password = ref('')
   const confirmPassword = ref('')
+  const errorMessage = ref('')
+
+  // Async validation for username availability, used in usernameRules
+  const checkUsernameAvailability = async (value: string) => {
+    if (!value) return 'Username is required'
+    try {
+      const res = await axios.get('/api/username-check', { params: { username: value } })
+      return res.data ? true : 'Username already taken'
+    } catch {
+      return 'Error checking username'
+    }
+  }
 
   const usernameRules = [
     (v: string) => !!v || 'Username is required',
+    checkUsernameAvailability,
   ]
 
   const passwordRules = [
@@ -25,6 +38,8 @@
   ]
 
   const submit = async () => {
+    errorMessage.value = '' // clear previous error
+
     const valid = await form.value?.validate()
     if (!valid) return
 
@@ -32,20 +47,24 @@
       const res = await axios.post('/api/register', {
         username: username.value,
         password: password.value,
+        role: 'USER',
       })
       if (res.data.success) {
         router.push('/login')
+      } else {
+        errorMessage.value = res.data.message || 'Registration failed'
       }
-    } catch (error) {
-      console.error('Registration failed:', error)
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error)) {
+        errorMessage.value = error.response?.data?.message || error.message
+      } else {
+        errorMessage.value = error instanceof Error ? error.message : String(error)
+      }
     }
   }
 
-  const reset = () => {
-    username.value = ''
-    password.value = ''
-    confirmPassword.value = ''
-    form.value?.resetValidation()
+  const cancel = () => {
+    router.push('/login')
   }
 </script>
 
@@ -54,13 +73,23 @@
     <v-container class="d-flex align-center justify-center" style="min-height: 100vh;">
       <v-card class="auth-card" width="600">
         <v-row no-gutters>
-          <!-- Registration Form Section -->
           <v-col class="login-section pa-8" cols="12">
             <v-card-title class="text-center mb-6" style="color: #800020; font-size: 1.5rem;">
               Create Your Account
             </v-card-title>
 
             <v-form ref="form">
+              <!-- Show API error message above form -->
+              <v-alert
+                v-if="errorMessage"
+                class="mb-4"
+                dense
+                outlined
+                type="error"
+              >
+                {{ errorMessage }}
+              </v-alert>
+
               <v-text-field
                 v-model="username"
                 class="mb-4"
@@ -100,7 +129,7 @@
                 class="beige-cancel-btn"
                 size="large"
                 variant="outlined"
-                @click="reset"
+                @click="cancel"
               >
                 CANCEL
               </v-btn>
