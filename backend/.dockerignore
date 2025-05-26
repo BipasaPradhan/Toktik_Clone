@@ -1,0 +1,27 @@
+# Maven and build output
+codebase/target/
+dependency-reduced-pom.xml
+build/
+
+# IDE and editor folders
+.gradle/
+codebase/.idea/
+*.iml
+*.sublime-*
+
+# Eclipse-specific
+.classpath
+.project
+.settings/
+
+# OS/editor cruft
+*.DS_Store
+*.sw?
+.#*
+*#
+*~
+
+# Misc
+/scratch
+README.html
+
