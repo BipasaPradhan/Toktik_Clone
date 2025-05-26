@@ -31,9 +31,7 @@ services:
 
 networks:
   redis_network:
-    driver: bridge
 
 volumes:
   db_data:
-    driver: local
 
