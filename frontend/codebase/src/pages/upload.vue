@@ -1,74 +1,76 @@
 <template>
-  <v-container fluid>
-    <v-row class="justify-space-between mb-6 pa-4" style="position: sticky; top: 0; background: white; z-index: 1;">
-      <v-col cols="auto">
-        <v-btn class="toc-btn" variant="text" @click="goHome">
-          TocTik
-        </v-btn>
-      </v-col>
-      <v-col cols="auto">
-      </v-col>
-    </v-row>
+  <v-main class="home-background">
+    <v-container fluid>
+      <v-row class="justify-space-between mb-6 pa-4" style="position: sticky; top: 0; background: #f5f5f0; z-index: 1;">
+        <v-col cols="auto">
+          <v-btn class="toc-btn" variant="text" @click="goHome">
+            TocTik
+          </v-btn>
+        </v-col>
+        <v-col cols="auto">
+        </v-col>
+      </v-row>
 
-    <v-row justify="center" class="mt-6">
-      <v-col cols="12" sm="8" md="6">
-        <v-card class="pa-6">
-          <v-card-title class="text-h5 font-weight-bold mb-4">Upload New Video</v-card-title>
+      <v-row justify="center" class="mt-6">
+        <v-col cols="12" sm="8" md="6">
+          <v-card class="pa-6">
+            <v-card-title class="text-h5 font-weight-bold mb-4">Upload New Video</v-card-title>
 
-          <v-form ref="formRef" v-model="valid" @submit.prevent="handleSubmit">
-            <v-text-field
-              v-model="name"
-              label="Video Name"
-              required
-              :rules="[v => !!v || 'Name is required']"
-            />
+            <v-form ref="formRef" v-model="valid" @submit.prevent="handleSubmit">
+              <v-text-field
+                v-model="name"
+                label="Video Name"
+                required
+                :rules="[v => !!v || 'Name is required']"
+              />
 
-            <v-textarea
-              v-model="description"
-              label="Description"
-              required
-              :rules="[v => !!v || 'Description is required']"
-            />
+              <v-textarea
+                v-model="description"
+                label="Description"
+                required
+                :rules="[v => !!v || 'Description is required']"
+              />
 
-            <v-file-input
-              v-model="file"
-              accept="video/*"
-              label="Select Video File"
-              required
-              :rules="[v => !!v || 'File is required']"
-            />
+              <v-file-input
+                v-model="file"
+                accept="video/*"
+                label="Select Video File"
+                required
+                :rules="[v => !!v || 'File is required']"
+              />
 
-            <v-select
-              v-model="visibility"
-              :items="['Public', 'Private']"
-              label="Visibility"
-              required
-              :rules="[v => !!v || 'Visibility is required']"
-            />
+              <v-select
+                v-model="visibility"
+                :items="['Public', 'Private']"
+                label="Visibility"
+                required
+                :rules="[v => !!v || 'Visibility is required']"
+              />
 
-            <div class="mt-4">
-              <v-btn
-                color="brown"
-                :disabled="!valid"
-                type="submit"
-                variant="flat"
-              >
-                Upload
-              </v-btn>
-              <v-btn
-                class="ml-2"
-                color="grey"
-                variant="outlined"
-                @click="cancelUpload"
-              >
-                Cancel
-              </v-btn>
-            </div>
-          </v-form>
-        </v-card>
-      </v-col>
-    </v-row>
-  </v-container>
+              <div class="mt-4">
+                <v-btn
+                  color="brown"
+                  :disabled="!valid"
+                  type="submit"
+                  variant="flat"
+                >
+                  Upload
+                </v-btn>
+                <v-btn
+                  class="ml-2"
+                  color="grey"
+                  variant="outlined"
+                  @click="cancelUpload"
+                >
+                  Cancel
+                </v-btn>
+              </div>
+            </v-form>
+          </v-card>
+        </v-col>
+      </v-row>
+    </v-container>
+  </v-main>
 </template>
 
 <script setup lang="ts">
@@ -101,18 +103,22 @@ const handleSubmit = () => {
 }
 
 const cancelUpload = () => {
-  // Optionally reset the form
   formRef.value?.reset()
-  // Redirect to manage page
   router.push('/manage')
 }
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .toc-btn {
   font-weight: bold;
   font-size: 18px;
   text-transform: none;
   color: #2b2119 !important;
 }
+
+.home-background {
+  background-color: #f5f5f0;
+  min-height: 100vh;
+}
+
 </style>
