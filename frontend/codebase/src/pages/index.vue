@@ -1,34 +1,22 @@
 <template>
   <v-main class="home-background">
-
     <!-- Top Navigation Bar -->
     <div class="top-bar px-4 py-4">
-
       <!-- Left: Toctik logo -->
       <div class="logo clickable" @click="goHome">
         Toctik
       </div>
 
-      <!-- Center: Upload Button -->
-      <div class="center-icon">
-        <v-btn class="upload-btn" icon @click="goToUpload">
-          <v-icon color="#2b2119" size="32">mdi-cloud-upload</v-icon>
+      <!-- Right: Upload + Logout buttons -->
+      <div class="top-buttons">
+        <v-btn class="upload-btn" variant="outlined" @click="goToUpload">
+          Upload
         </v-btn>
-      </div>
-
-      <!-- Right: Logout -->
-      <div class="right-logout">
         <v-btn class="logout-btn" variant="outlined" @click="logout">
           Logout
         </v-btn>
       </div>
     </div>
-
-    <!-- Welcome Text -->
-    <div class="text-center mt-10">
-      <h2 class="welcome-text">Welcome, {{ authStore.username || 'User' }}</h2>
-    </div>
-
   </v-main>
 </template>
 
@@ -94,19 +82,27 @@
 }
 
 .top-bar {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  display: flex;
+  justify-content: space-between;
   align-items: center;
 }
 
-.center-icon {
+.top-buttons {
   display: flex;
-  justify-content: center;
+  gap: 12px;
 }
 
-.right-logout {
-  display: flex;
-  justify-content: end;
+.logout-btn,
+.upload-btn {
+  color: #2b2119 !important;
+  background-color: transparent !important;
+  border: 1px solid #c4b5a3 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+
+  &:hover {
+    background-color: rgba(212, 196, 177, 0.1) !important;
+  }
 }
 
 </style>
