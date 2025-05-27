@@ -3,14 +3,14 @@
     <!-- Top Navigation Bar -->
     <div class="top-bar px-4 py-4">
       <!-- Left: Toctik logo -->
-      <div class="logo clickable" @click="goHome">
-        Toctik
-      </div>
+      <v-btn class="toc-btn" variant="text" @click="goHome">
+        TocTik
+      </v-btn>
 
       <!-- Right: Upload + Logout buttons -->
       <div class="top-buttons">
-        <v-btn class="upload-btn" variant="outlined" @click="goToUpload">
-          Upload
+        <v-btn class="manage-btn" variant="outlined" @click="goToManage">
+          Manage
         </v-btn>
         <v-btn class="logout-btn" variant="outlined" @click="logout">
           Logout
@@ -36,8 +36,8 @@
     router.push('/')
   }
 
-  const goToUpload = () => {
-    router.push('/upload')
+  const goToManage = () => {
+    router.push('/manage')
   }
 </script>
 
@@ -45,13 +45,6 @@
 .home-background {
   background-color: #f5f5f0;
   min-height: 100vh;
-}
-
-.logo {
-  font-size: 1.5rem;
-  font-weight: bold;
-  color: #800020;
-  cursor: pointer;
 }
 
 .upload-btn {
