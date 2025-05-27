@@ -46,15 +46,24 @@
               :rules="[v => !!v || 'Visibility is required']"
             />
 
-            <v-btn
-              class="mt-4"
-              color="brown"
-              :disabled="!valid"
-              type="submit"
-              variant="flat"
-            >
-              Upload
-            </v-btn>
+            <div class="mt-4">
+              <v-btn
+                color="brown"
+                :disabled="!valid"
+                type="submit"
+                variant="flat"
+              >
+                Upload
+              </v-btn>
+              <v-btn
+                class="ml-2"
+                color="grey"
+                variant="outlined"
+                @click="cancelUpload"
+              >
+                Cancel
+              </v-btn>
+            </div>
           </v-form>
         </v-card>
       </v-col>
@@ -88,6 +97,13 @@ const handleSubmit = () => {
   })
 
   // Redirect or show success message
+  router.push('/manage')
+}
+
+const cancelUpload = () => {
+  // Optionally reset the form
+  formRef.value?.reset()
+  // Redirect to manage page
   router.push('/manage')
 }
 </script>
