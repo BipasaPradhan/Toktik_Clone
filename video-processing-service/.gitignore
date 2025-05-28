@@ -10,3 +10,4 @@ download_test.py
 test_processor.py
 output
 uploads
+test_celery.py

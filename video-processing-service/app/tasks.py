@@ -3,9 +3,15 @@ from app.s3_client import S3Client
 from app.video_processor import VideoProcessor
 import os
 import shutil
+import sys
+
+print("Starting app/tasks.py")
+print(f"sys.path: {sys.path}")
 
 app = Celery('tasks')
+print("Before config_from_object")
 app.config_from_object('celeryconfig')
+print(f"After config_from_object, broker_url: {app.conf.broker_url}")
 
 @app.task
 def process_video_task(video_id: str, s3_key: str):
