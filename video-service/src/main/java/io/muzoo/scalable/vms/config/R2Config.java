@@ -16,10 +16,10 @@ public class R2Config {
     @Value("${cloudflare.r2.endpoint}")
     private String endpoint;
 
-    @Value("${cloudflare.r2.accessKey}")
+    @Value("${cloudflare.r2.access-key}")
     private String accessKey;
 
-    @Value("${cloudflare.r2.secretKey}")
+    @Value("${cloudflare.r2.secret-key}")
     private String secretKey;
 
     @Bean

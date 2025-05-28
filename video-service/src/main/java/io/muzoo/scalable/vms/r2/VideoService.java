@@ -1,5 +1,6 @@
 package io.muzoo.scalable.vms.r2;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
@@ -13,15 +14,12 @@ import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignReques
 import java.time.Duration;
 
 @Service
+@RequiredArgsConstructor
 public class VideoService {
     private final S3Presigner s3Presigner;
 
     @Value("${cloudflare.r2.bucket-name}")
     private String bucketName;
-
-    public VideoService(S3Presigner s3Presigner) {
-        this.s3Presigner = s3Presigner;
-    }
 
     // Presigned URL for uploading (PUT)
     public String generatePresignedUploadUrl(String videoFileName, String userId) {
