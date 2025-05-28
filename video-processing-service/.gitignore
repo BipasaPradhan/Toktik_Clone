@@ -1,0 +1,8 @@
+.env
+__pycache__/
+*.pyc
+.idea/
+.venv/
+test.mp4
+test_s3.py
+upload_test.py

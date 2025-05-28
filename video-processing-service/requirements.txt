@@ -1,5 +1,9 @@
-fastapi
-uvicorn
-ffmpeg-python
-python-multipart
-boto3
+fastapi==0.115.0
+uvicorn==0.30.6
+ffmpeg-python==0.2.0
+python-multipart==0.0.9
+boto3==1.35.24
+pydantic==2.9.2
+python-dotenv==1.0.1
+celery==5.4.0
+redis==5.0.8
