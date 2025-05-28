@@ -185,6 +185,5 @@
 
 <route lang="yaml">
 meta:
-layout: login
 requiresAuth: false
 </route>
