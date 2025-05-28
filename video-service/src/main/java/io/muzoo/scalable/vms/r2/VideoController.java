@@ -26,7 +26,11 @@ public class VideoController {
             String presignedUrl = videoService.generatePresignedUploadUrl(videoFileName, userId);
             System.out.println("Generated Presigned URL: " + presignedUrl);
             return ResponseEntity.ok(presignedUrl);
-        } catch (Exception e) {
+        }
+        catch (IllegalArgumentException e) {
+            return ResponseEntity.status(409).body(e.getMessage()); // 409 Conflict
+        }
+        catch (Exception e) {
             return ResponseEntity.status(500).body("Error generating presigned URL: " + e.getMessage());
         }
     }
