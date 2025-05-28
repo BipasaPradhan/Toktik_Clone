@@ -75,8 +75,10 @@
 <script setup lang="ts">
   import { ref } from 'vue'
   import { useRouter } from 'vue-router'
+  import { useAuthStore } from '@/stores/auth'
 
   const router = useRouter()
+  const authStore = useAuthStore()
   const goHome = () => router.push('/')
 
   const name = ref('')
@@ -106,14 +108,28 @@
     })
   }
 
-  // TODO: use actual userID in real implementation
   const getPresignedUrl = async (filename: string) => {
-    const userId = 'test-user'
+    if (!authStore.isLoggedIn) {
+      router.push('/login')
+      throw new Error('User not authenticated')
+    }
+    const userId = authStore.getUsername || 'default-user'
+    console.log('Requesting presigned URL for userId:', userId, 'filename:', filename)
     const res = await fetch(
-      `http://localhost:8081/api/videos/presign-upload?videoFileName=${encodeURIComponent(filename)}&userId=${userId}`
+      `http://localhost:8081/api/videos/presign-upload?videoFileName=${encodeURIComponent(filename)}&userId=${encodeURIComponent(userId)}`,
+      { credentials: 'include' }
     )
-    if (!res.ok) throw new Error('Failed to get presigned URL')
-    return await res.text()
+    if (!res.ok) {
+      console.error('Presign response:', res.status, await res.text())
+      if (res.status === 403 || res.status === 401) {
+        router.push('/login')
+        throw new Error('Authentication failed')
+      }
+      throw new Error('Failed to get presigned URL')
+    }
+    const presignedUrl = await res.text()
+    console.log('Received presigned URL:', presignedUrl)
+    return presignedUrl
   }
 
   const uploadToPresignedUrl = async (presignedUrl: string, file: File) => {
@@ -124,7 +140,10 @@
       },
       body: file,
     })
-    if (!res.ok) throw new Error('Upload failed')
+    if (!res.ok) {
+      console.error('Upload response:', res.status, res.statusText)
+      throw new Error(`Upload failed with status ${res.status}: ${res.statusText}`)
+    }
   }
 
   const handleSubmit = async () => {
@@ -161,7 +180,6 @@
   }
 </script>
 
-
 <style scoped lang="scss">
 .toc-btn {
   font-weight: bold;
@@ -174,10 +192,9 @@
   background-color: #f5f5f0;
   min-height: 100vh;
 }
-
 </style>
 
 <route lang="yaml">
 meta:
-requiresAuth: false
+requiresAuth: true
 </route>
