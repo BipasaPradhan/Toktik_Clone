@@ -9,7 +9,7 @@ import java.time.ZoneId;
 @Entity
 @Data
 @NoArgsConstructor
-@Table(name = "video_data")
+@Table(name = "vms_video_data")
 public class Video {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

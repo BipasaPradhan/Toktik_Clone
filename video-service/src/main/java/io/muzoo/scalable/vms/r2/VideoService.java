@@ -24,40 +24,38 @@ import java.util.Optional;
 public class VideoService {
     private final S3Presigner s3Presigner;
     private final S3Client s3Client;
+    private final VideoRepository videoRepository;
 
     @Value("${cloudflare.r2.bucket-name}")
     private String bucketName;
 
-    @Autowired
-    private VideoRepository videoRepository;
+    // Class to hold presigned URL and objectKey
+    public static class PresignedUploadResponse {
+        private final String presignedUrl;
+        private final String objectKey;
+
+        public PresignedUploadResponse(String presignedUrl, String objectKey) {
+            this.presignedUrl = presignedUrl;
+            this.objectKey = objectKey;
+        }
+
+        public String getPresignedUrl() {
+            return presignedUrl;
+        }
+
+        public String getObjectKey() {
+            return objectKey;
+        }
+    }
 
     // Presigned URL for uploading (PUT)
-    public String generatePresignedUploadUrl(String videoFileName, String userId) {
-        String key = userId + "/" + videoFileName;
-
-        // Check for duplicate in database
-        Optional<Video> existingVideo = videoRepository.findByObjectKey(key);
-        if (existingVideo.isPresent()) {
-            // Verify if the file actually exists in R2
-            try {
-                s3Client.headObject(HeadObjectRequest.builder()
-                        .bucket(bucketName)
-                        .key(key)
-                        .build());
-                // File exists in R2, block the upload
-                throw new IllegalArgumentException("You have already uploaded this video.");
-            } catch (NoSuchKeyException e) {
-                // File doesn't exist in R2, delete the database entry to allow re-upload
-                videoRepository.delete(existingVideo.get());
-            } catch (S3Exception e) {
-                // Handle other S3 exceptions (e.g., access denied)
-                throw new RuntimeException("Error checking object in R2: " + e.getMessage(), e);
-            }
-        }
+    public PresignedUploadResponse generatePresignedUploadUrl(String videoFileName, String userId) {
+        String baseKey = userId + "/" + videoFileName;
+        String uniqueKey = baseKey + "_" + System.currentTimeMillis();
 
         PutObjectRequest putObjectRequest = PutObjectRequest.builder()
                 .bucket(bucketName)
-                .key(key)
+                .key(uniqueKey)
                 .build();
 
         PutObjectPresignRequest presignRequest = PutObjectPresignRequest.builder()
@@ -66,15 +64,14 @@ public class VideoService {
                 .build();
 
         PresignedPutObjectRequest presignedRequest = s3Presigner.presignPutObject(presignRequest);
-        return presignedRequest.url().toString();
+        return new PresignedUploadResponse(presignedRequest.url().toString(), uniqueKey);
     }
 
     // Presigned URL for downloading (GET)
-    public String generatePresignedDownloadUrl(String videoFileName, String userId) {
-        String key = userId + "/" + videoFileName;
+    public String generatePresignedDownloadUrl(String objectKey) {
         GetObjectRequest getObjectRequest = GetObjectRequest.builder()
                 .bucket(bucketName)
-                .key(key)
+                .key(objectKey)
                 .build();
 
         GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
@@ -87,10 +84,7 @@ public class VideoService {
     }
 
     @Transactional
-    public Video saveVideoMetadata(String userId, String videoFileName, String title, String description, String visibility) {
-        String objectKey = userId + "/" + videoFileName;
-
-        // Verify file exists in R2
+    public Video saveVideoMetadata(String userId, String objectKey, String title, String description, String visibility) {
         try {
             s3Client.headObject(HeadObjectRequest.builder()
                     .bucket(bucketName)
@@ -106,7 +100,4 @@ public class VideoService {
         Video video = new Video(userId, title, description, objectKey, status, visibility);
         return videoRepository.save(video);
     }
-
-
-
 }

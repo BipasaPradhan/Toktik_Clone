@@ -116,7 +116,7 @@
     const userId = authStore.getUsername || 'default-user'
     console.log('Requesting presigned URL for userId:', userId, 'filename:', filename)
     const res = await fetch(
-      `http://localhost:8081/api/videos/presign-upload?videoFileName=${encodeURIComponent(filename)}&userId=${encodeURIComponent(userId)}`,
+      `http://localhost:8081/api/videos/presign-upload?videoFileName=${encodeURIComponent(filename)}`,
       { credentials: 'include' }
     )
     if (!res.ok) {
@@ -127,9 +127,10 @@
       }
       throw new Error('Failed to get presigned URL')
     }
-    const presignedUrl = await res.text()
-    console.log('Received presigned URL:', presignedUrl)
-    return presignedUrl
+    const response = await res.json()
+    console.log('Received presigned URL:', response.presignedUrl)
+    console.log('Received objectKey:', response.objectKey)
+    return { presignedUrl: response.presignedUrl, objectKey: response.objectKey }
   }
 
   const uploadToPresignedUrl = async (presignedUrl: string, file: File) => {
@@ -146,6 +147,35 @@
     }
   }
 
+  const saveMetadata = async (objectKey: string, title: string, description: string, visibility: string) => {
+    if (!authStore.isLoggedIn) {
+      router.push('/login')
+      throw new Error('User not authenticated')
+    }
+    const params = new URLSearchParams({
+      objectKey,
+      title,
+      description,
+      visibility,
+    }).toString()
+    const res = await fetch(
+      `http://localhost:8081/api/videos/metadata?${params}`,
+      {
+        method: 'POST',
+        credentials: 'include',
+      }
+    )
+    if (!res.ok) {
+      console.error('Metadata save response:', res.status, await res.text())
+      if (res.status === 403 || res.status === 401) {
+        router.push('/login')
+        throw new Error('Authentication failed')
+      }
+      throw new Error('Failed to save metadata')
+    }
+    return await res.text()
+  }
+
   const handleSubmit = async () => {
     if (!formRef.value?.validate()) return
     if (!file.value) return
@@ -157,20 +187,22 @@
         return
       }
 
-      const presignedUrl = await getPresignedUrl(file.value.name)
+      const { presignedUrl, objectKey } = await getPresignedUrl(file.value.name)
       await uploadToPresignedUrl(presignedUrl, file.value)
+      await saveMetadata(objectKey, name.value, description.value, visibility.value)
 
-      console.log('Upload success:', {
+      console.log('Upload and metadata save success:', {
         name: name.value,
         description: description.value,
         fileName: file.value.name,
         visibility: visibility.value,
+        objectKey,
       })
 
       router.push('/manage')
     } catch (err) {
       console.error('Upload failed:', err)
-      alert('Failed to upload video. Please try again.')
+      alert('Failed to upload video or save metadata. Please try again.')
     }
   }
 

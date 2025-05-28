@@ -12,7 +12,7 @@ public class VideoController {
     private final VideoService videoService;
 
     @GetMapping("/presign-upload")
-    public ResponseEntity<String> getPresignedUploadUrl(
+    public ResponseEntity<VideoService.PresignedUploadResponse> getPresignedUploadUrl(
             @RequestParam String videoFileName,
             Authentication authentication) {
         System.out.println("Received request for videoFileName: " + videoFileName);
@@ -20,32 +20,51 @@ public class VideoController {
         String userId = authentication.getName();
         System.out.println("Extracted userId: " + userId);
         if (userId == null) {
-            return ResponseEntity.status(401).body("User not authenticated");
+            return ResponseEntity.status(401).body(null);
         }
         try {
-            String presignedUrl = videoService.generatePresignedUploadUrl(videoFileName, userId);
-            System.out.println("Generated Presigned URL: " + presignedUrl);
-            return ResponseEntity.ok(presignedUrl);
-        }
-        catch (IllegalArgumentException e) {
-            return ResponseEntity.status(409).body(e.getMessage()); // 409 Conflict
-        }
-        catch (Exception e) {
-            return ResponseEntity.status(500).body("Error generating presigned URL: " + e.getMessage());
+            VideoService.PresignedUploadResponse response = videoService.generatePresignedUploadUrl(videoFileName, userId);
+            System.out.println("Generated Presigned URL: " + response.getPresignedUrl());
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(null);
         }
     }
 
     @GetMapping("/presign-download")
     public ResponseEntity<String> getPresignedDownloadUrl(
-            @RequestParam String videoFileName,
+            @RequestParam String objectKey,
             Authentication authentication) {
         String userId = authentication.getName();
-
+        if (userId == null) {
+            return ResponseEntity.status(401).body("User not authenticated");
+        }
         try {
-            String presignedUrl = videoService.generatePresignedDownloadUrl(videoFileName, userId);
+            String presignedUrl = videoService.generatePresignedDownloadUrl(objectKey);
             return ResponseEntity.ok(presignedUrl);
         } catch (Exception e) {
             return ResponseEntity.status(500).body("Error generating presigned URL: " + e.getMessage());
+        }
+    }
+
+    @PostMapping("/metadata")
+    public ResponseEntity<String> saveVideoMetadata(
+            @RequestParam String objectKey,
+            @RequestParam String title,
+            @RequestParam String description,
+            @RequestParam String visibility,
+            Authentication authentication) {
+        String userId = authentication.getName();
+        if (userId == null) {
+            return ResponseEntity.status(401).body("User not authenticated");
+        }
+        try {
+            videoService.saveVideoMetadata(userId, objectKey, title, description, visibility);
+            return ResponseEntity.ok("Metadata saved successfully");
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(400).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Error saving metadata: " + e.getMessage());
         }
     }
 }
