@@ -3,6 +3,9 @@ __pycache__/
 *.pyc
 .idea/
 .venv/
-test.mp4
+*.mp4
 test_s3.py
 upload_test.py
+download_test.py
+test_processor.py
+output
