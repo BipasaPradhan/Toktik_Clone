@@ -99,3 +99,8 @@
 }
 
 </style>
+
+<route lang="yaml">
+meta:
+requiresAuth: true
+</route>

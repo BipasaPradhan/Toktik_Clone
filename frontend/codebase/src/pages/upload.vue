@@ -7,12 +7,11 @@
             TocTik
           </v-btn>
         </v-col>
-        <v-col cols="auto">
-        </v-col>
+        <v-col cols="auto" />
       </v-row>
 
-      <v-row justify="center" class="mt-6">
-        <v-col cols="12" sm="8" md="6">
+      <v-row class="mt-6" justify="center">
+        <v-col cols="12" md="6" sm="8">
           <v-card class="pa-6">
             <v-card-title class="text-h5 font-weight-bold mb-4">Upload New Video</v-card-title>
 
@@ -74,39 +73,94 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+  import { ref } from 'vue'
+  import { useRouter } from 'vue-router'
 
-const router = useRouter()
-const goHome = () => router.push('/')
+  const router = useRouter()
+  const goHome = () => router.push('/')
 
-const name = ref('')
-const description = ref('')
-const file = ref<File | null>(null)
-const visibility = ref('')
-const valid = ref(false)
-const formRef = ref()
+  const name = ref('')
+  const description = ref('')
+  const file = ref<File | null>(null)
+  const visibility = ref('')
+  const valid = ref(false)
+  const formRef = ref()
 
-const handleSubmit = () => {
-  if (!formRef.value?.validate()) return
+  const checkDuration = (file: File): Promise<boolean> => {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file)
+      const video = document.createElement('video')
 
-  // TODO: Replace this with actual upload API
-  console.log('Uploading:', {
-    name: name.value,
-    description: description.value,
-    file: file.value,
-    visibility: visibility.value,
-  })
+      video.preload = 'metadata'
+      video.src = url
 
-  // Redirect or show success message
-  router.push('/manage')
-}
+      video.onloadedmetadata = () => {
+        URL.revokeObjectURL(url)
+        const duration = video.duration
+        resolve(duration <= 60)
+      }
 
-const cancelUpload = () => {
-  formRef.value?.reset()
-  router.push('/manage')
-}
+      video.onerror = () => {
+        reject(new Error('Invalid video file'))
+      }
+    })
+  }
+
+  // TODO: use actual userID in real implementation
+  const getPresignedUrl = async (filename: string) => {
+    const userId = 'test-user'
+    const res = await fetch(
+      `http://localhost:8081/api/videos/presign-upload?videoFileName=${encodeURIComponent(filename)}&userId=${userId}`
+    )
+    if (!res.ok) throw new Error('Failed to get presigned URL')
+    return await res.text()
+  }
+
+  const uploadToPresignedUrl = async (presignedUrl: string, file: File) => {
+    const res = await fetch(presignedUrl, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': file.type,
+      },
+      body: file,
+    })
+    if (!res.ok) throw new Error('Upload failed')
+  }
+
+  const handleSubmit = async () => {
+    if (!formRef.value?.validate()) return
+    if (!file.value) return
+
+    try {
+      const isValidDuration = await checkDuration(file.value)
+      if (!isValidDuration) {
+        alert('Video duration exceeds 60 seconds. Please select a shorter video.')
+        return
+      }
+
+      const presignedUrl = await getPresignedUrl(file.value.name)
+      await uploadToPresignedUrl(presignedUrl, file.value)
+
+      console.log('Upload success:', {
+        name: name.value,
+        description: description.value,
+        fileName: file.value.name,
+        visibility: visibility.value,
+      })
+
+      router.push('/manage')
+    } catch (err) {
+      console.error('Upload failed:', err)
+      alert('Failed to upload video. Please try again.')
+    }
+  }
+
+  const cancelUpload = () => {
+    formRef.value?.reset()
+    router.push('/manage')
+  }
 </script>
+
 
 <style scoped lang="scss">
 .toc-btn {
@@ -122,3 +176,8 @@ const cancelUpload = () => {
 }
 
 </style>
+
+<route lang="yaml">
+meta:
+requiresAuth: false
+</route>
