@@ -56,8 +56,16 @@ class VideoProcessor:
 
     def extract_thumbnail(self, input_path, output_path):
         try:
-            stream = ffmpeg.input(input_path, ss=1)  # Thumbnail at 1 second
-            stream = ffmpeg.output(stream, output_path, vframes=1, vcodec='mjpeg', update=1)
+            stream = ffmpeg.input(input_path, ss=1)
+            stream = ffmpeg.filter(stream, 'format', 'yuv420p')
+            stream = ffmpeg.output(
+                stream,
+                output_path,
+                vframes=1,
+                vcodec='mjpeg',
+                color_range='tv',
+                colorspace='bt709'
+            )
             ffmpeg.run(stream)
             return output_path
         except ffmpeg.Error as e:
