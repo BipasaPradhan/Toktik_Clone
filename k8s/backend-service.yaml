@@ -1,0 +1,12 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: ums-backend
+spec:
+  selector:
+    app: ums-backend
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080

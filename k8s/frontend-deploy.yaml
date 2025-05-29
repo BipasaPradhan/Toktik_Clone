@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ums-frontend
+  labels:
+    app: ums-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ums-frontend
+  template:
+    metadata:
+      labels:
+        app: ums-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: ghcr.io/bipasapradhan/ums-frontend:latest
+          ports:
+            - containerPort: 8080
+      imagePullSecrets:
+        - name: ghcr-secret

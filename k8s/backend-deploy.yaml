@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ums-backend
+  labels:
+    app: ums-backend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: ums-backend
+  template:
+    metadata:
+      labels:
+        app: ums-backend
+    spec:
+      imagePullSecrets:
+        - name: ghcr-secret
+      containers:
+        - name: backend
+          image: ghcr.io/bipasapradhan/ums-backend:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: UMS_DB_IP
+              value: "maria-db"
+            - name: UMS_DB_PORT
+              value: "3306"
+            - name: UMS_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mariadb-secret
+                  key: UMS_DB_PASSWORD
+            - name: UMS_DB_NAME
+              value: "ums"
+            - name: UMS_DB_USERNAME
+              value: "dev"
+            - name: SPRING_DATA_REDIS_HOST
+              value: "redis"
+            - name: SPRING_DATA_REDIS_PORT
+              value: "6379"
+
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 3
+            successThreshold: 1
