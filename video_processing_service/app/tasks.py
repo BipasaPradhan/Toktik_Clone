@@ -10,7 +10,7 @@ print(f"sys.path: {sys.path}")
 
 app = Celery('tasks')
 print("Before config_from_object")
-app.config_from_object('celeryconfig')
+app.config_from_object('video_processing_service.celeryconfig')
 print(f"After config_from_object, broker_url: {app.conf.broker_url}")
 
 @app.task

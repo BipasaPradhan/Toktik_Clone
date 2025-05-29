@@ -16,7 +16,7 @@ services:
       timeout: 5s
       retries: 30
       start_period: 15s
-    
+
   redis:
     image: redis:latest
     healthcheck:
@@ -29,28 +29,27 @@ services:
     ports:
       - "6379:6379"
 
-#  video-processing-service:
-#    build:
-#      context: ./video-processing-service
-#    container_name: video-processing-service
-#    ports:
-#      - "8001:8000"
-#    volumes:
-#      - ./video-processing-service:/app
-#    depends_on:
-#      - redis
-#    environment:
-#      - S3_ENDPOINT_URL=${S3_ENDPOINT_URL}
-#      - S3_ACCESS_KEY=${S3_ACCESS_KEY}
-#      - S3_SECRET_KEY=${S3_SECRET_KEY}
-#      - S3_BUCKET=${S3_BUCKET}
-#      - S3_REGION=${S3_REGION}
-#      - CELERY_BROKER_URL=${CELERY_BROKER_URL}
-#      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}
+  video-processing-service:
+    build:
+      context: ./video_processing_service
+    container_name: video-processing-service
+    ports:
+      - "8001:8000"
+    volumes:
+      - ./video_processing_service:/app
+    depends_on:
+      - redis
+    environment:
+      - S3_ENDPOINT_URL=${S3_ENDPOINT_URL}
+      - S3_ACCESS_KEY=${S3_ACCESS_KEY}
+      - S3_SECRET_KEY=${S3_SECRET_KEY}
+      - S3_BUCKET=${S3_BUCKET}
+      - S3_REGION=${S3_REGION}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL}
+      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}
 
 networks:
   redis_network:
 
 volumes:
   db_data:
-
