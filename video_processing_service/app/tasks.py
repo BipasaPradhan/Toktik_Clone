@@ -1,17 +1,27 @@
 from celery import Celery
+from celery.signals import worker_process_init
 from app.s3_client import S3Client
 from app.video_processor import VideoProcessor
 import os
 import shutil
-import sys
-
-print("Starting app/tasks.py")
-print(f"sys.path: {sys.path}")
 
 app = Celery('tasks')
-print("Before config_from_object")
-app.config_from_object('video_processing_service.celeryconfig')
-print(f"After config_from_object, broker_url: {app.conf.broker_url}")
+
+@worker_process_init.connect
+def configure_worker(**kwargs):
+    app.conf.update(
+        broker_url='redis://localhost:6379/0',
+        result_backend='redis://localhost:6379/0',
+        task_serializer='json',
+        result_serializer='json',
+        accept_content=['json'],
+        timezone='UTC',
+        enable_utc=True,
+        broker_connection_retry_on_startup=True
+    )
+    print(f"Worker init broker_url: {app.conf.broker_url}")
+
+print(f"Initial broker_url: {app.conf.broker_url}")
 
 @app.task
 def process_video_task(video_id: str, s3_key: str):
