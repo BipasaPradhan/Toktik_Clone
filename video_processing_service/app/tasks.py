@@ -2,6 +2,7 @@ from celery import Celery
 from celery.signals import worker_process_init
 from app.s3_client import S3Client
 from app.video_processor import VideoProcessor
+from app.config import Config
 import os
 import shutil
 
@@ -10,8 +11,8 @@ app = Celery('tasks')
 @worker_process_init.connect
 def configure_worker(**kwargs):
     app.conf.update(
-        broker_url='redis://localhost:6379/0',
-        result_backend='redis://localhost:6379/0',
+        broker_url=Config.CELERY_BROKER_URL,
+        result_backend=Config.CELERY_RESULT_BACKEND,
         task_serializer='json',
         result_serializer='json',
         accept_content=['json'],
@@ -45,7 +46,7 @@ def process_video_task(video_id: str, s3_key: str):
         for segment in segments:
             s3_client.upload_file(f"output/{video_id}/{segment}", f"processed/{video_id}/{segment}")
         s3_client.upload_file(playlist, f"processed/{video_id}/playlist.m3u8")
-        s3_client.upload_file(thumbnail, f"thumbnails/{video_id}.jpg")
+        s3_client.upload_file(thumbnail, f"thumbnails/{video_id}/thumb.jpg")
 
         # Cleanup
         os.remove(local_path)
