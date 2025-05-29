@@ -90,48 +90,41 @@
 
   const checkDuration = (file: File): Promise<boolean> => {
     return new Promise((resolve, reject) => {
-      const url = URL.createObjectURL(file)
-      const video = document.createElement('video')
-
-      video.preload = 'metadata'
-      video.src = url
-
+      const url = URL.createObjectURL(file);
+      const video = document.createElement('video');
+      video.preload = 'metadata';
+      video.src = url;
       video.onloadedmetadata = () => {
-        URL.revokeObjectURL(url)
-        const duration = video.duration
-        resolve(duration <= 60)
-      }
-
-      video.onerror = () => {
-        reject(new Error('Invalid video file'))
-      }
-    })
-  }
+        URL.revokeObjectURL(url);
+        resolve(video.duration <= 60);
+      };
+      video.onerror = () => reject(new Error('Invalid video file'));
+    });
+  };
 
   const getPresignedUrl = async (filename: string) => {
     if (!authStore.isLoggedIn) {
-      router.push('/login')
-      throw new Error('User not authenticated')
+      router.push('/login');
+      throw new Error('User not authenticated');
     }
-    const userId = authStore.getUsername || 'default-user'
-    console.log('Requesting presigned URL for userId:', userId, 'filename:', filename)
+    const userId = authStore.getUsername || 'default-user';
+    console.log('Requesting presigned URL for userId:', userId, 'filename:', filename);
     const res = await fetch(
-      `http://localhost:8081/api/videos/presign-upload?videoFileName=${encodeURIComponent(filename)}`,
-      { credentials: 'include' }
-    )
+      `http://localhost:8081/api/videos/presign-upload?videoFileName=${encodeURIComponent(filename)}&userId=${encodeURIComponent(userId)}`,
+      { credentials: 'include' } // Maintain session for auth service communication
+    );
     if (!res.ok) {
-      console.error('Presign response:', res.status, await res.text())
-      if (res.status === 403 || res.status === 401) {
-        router.push('/login')
-        throw new Error('Authentication failed')
+      console.error('Presign response:', res.status, await res.text());
+      if (res.status === 400) {
+        throw new Error('Invalid request: missing userId or videoFileName');
       }
-      throw new Error('Failed to get presigned URL')
+      throw new Error('Failed to get presigned URL');
     }
-    const response = await res.json()
-    console.log('Received presigned URL:', response.presignedUrl)
-    console.log('Received objectKey:', response.objectKey)
-    return { presignedUrl: response.presignedUrl, objectKey: response.objectKey }
-  }
+    const response = await res.json();
+    console.log('Received presigned URL:', response.presignedUrl);
+    console.log('Received objectKey:', response.objectKey);
+    return { presignedUrl: response.presignedUrl, objectKey: response.objectKey };
+  };
 
   const uploadToPresignedUrl = async (presignedUrl: string, file: File) => {
     const res = await fetch(presignedUrl, {
@@ -140,56 +133,57 @@
         'Content-Type': file.type,
       },
       body: file,
-    })
+    });
     if (!res.ok) {
-      console.error('Upload response:', res.status, res.statusText)
-      throw new Error(`Upload failed with status ${res.status}: ${res.statusText}`)
+      console.error('Upload response:', res.status, res.statusText);
+      throw new Error(`Upload failed with status ${res.status}: ${res.statusText}`);
     }
-  }
+  };
 
   const saveMetadata = async (objectKey: string, title: string, description: string, visibility: string) => {
     if (!authStore.isLoggedIn) {
-      router.push('/login')
-      throw new Error('User not authenticated')
+      router.push('/login');
+      throw new Error('User not authenticated');
     }
+    const userId = authStore.getUsername || 'default-user';
     const params = new URLSearchParams({
       objectKey,
       title,
       description,
       visibility,
-    }).toString()
+      userId,
+    }).toString();
     const res = await fetch(
       `http://localhost:8081/api/videos/metadata?${params}`,
       {
         method: 'POST',
         credentials: 'include',
       }
-    )
+    );
     if (!res.ok) {
-      console.error('Metadata save response:', res.status, await res.text())
-      if (res.status === 403 || res.status === 401) {
-        router.push('/login')
-        throw new Error('Authentication failed')
+      console.error('Metadata save response:', res.status, await res.text());
+      if (res.status === 400) {
+        throw new Error('Invalid request: missing userId or other parameters');
       }
-      throw new Error('Failed to save metadata')
+      throw new Error('Failed to save metadata');
     }
-    return await res.text()
-  }
+    return await res.text();
+  };
 
   const handleSubmit = async () => {
-    if (!formRef.value?.validate()) return
-    if (!file.value) return
+    if (!formRef.value?.validate()) return;
+    if (!file.value) return;
 
     try {
-      const isValidDuration = await checkDuration(file.value)
+      const isValidDuration = await checkDuration(file.value);
       if (!isValidDuration) {
-        alert('Video duration exceeds 60 seconds. Please select a shorter video.')
-        return
+        alert('Video duration exceeds 60 seconds. Please select a shorter video.');
+        return;
       }
 
-      const { presignedUrl, objectKey } = await getPresignedUrl(file.value.name)
-      await uploadToPresignedUrl(presignedUrl, file.value)
-      await saveMetadata(objectKey, name.value, description.value, visibility.value)
+      const { presignedUrl, objectKey } = await getPresignedUrl(file.value.name);
+      await uploadToPresignedUrl(presignedUrl, file.value);
+      await saveMetadata(objectKey, name.value, description.value, visibility.value);
 
       console.log('Upload and metadata save success:', {
         name: name.value,
@@ -197,19 +191,19 @@
         fileName: file.value.name,
         visibility: visibility.value,
         objectKey,
-      })
+      });
 
-      router.push('/manage')
+      router.push('/manage');
     } catch (err) {
-      console.error('Upload failed:', err)
-      alert('Failed to upload video or save metadata. Please try again.')
+      console.error('Upload failed:', err);
+      alert('Failed to upload video or save metadata. Please try again.');
     }
-  }
+  };
 
   const cancelUpload = () => {
-    formRef.value?.reset()
-    router.push('/manage')
-  }
+    formRef.value?.reset();
+    router.push('/manage');
+  };
 </script>
 
 <style scoped lang="scss">

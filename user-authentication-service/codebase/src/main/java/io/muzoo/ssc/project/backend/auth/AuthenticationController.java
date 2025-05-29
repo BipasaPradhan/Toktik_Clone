@@ -1,5 +1,4 @@
 package io.muzoo.ssc.project.backend.auth;
-
 import io.muzoo.ssc.project.backend.SimpleResponseDTO;
 import io.muzoo.ssc.project.backend.UserRepository;
 import io.muzoo.ssc.project.backend.user.RegisterRequestDTO;

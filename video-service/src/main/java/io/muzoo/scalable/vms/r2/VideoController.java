@@ -2,7 +2,7 @@ package io.muzoo.scalable.vms.r2;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
+//import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -14,13 +14,10 @@ public class VideoController {
     @GetMapping("/presign-upload")
     public ResponseEntity<VideoService.PresignedUploadResponse> getPresignedUploadUrl(
             @RequestParam String videoFileName,
-            Authentication authentication) {
-        System.out.println("Received request for videoFileName: " + videoFileName);
-        System.out.println("Authentication: " + authentication);
-        String userId = authentication.getName();
-        System.out.println("Extracted userId: " + userId);
-        if (userId == null) {
-            return ResponseEntity.status(401).body(null);
+            @RequestParam String userId) {
+        System.out.println("Received request for videoFileName: " + videoFileName + ", userId: " + userId);
+        if (userId == null || userId.isEmpty()) {
+            return ResponseEntity.status(400).body(null);
         }
         try {
             VideoService.PresignedUploadResponse response = videoService.generatePresignedUploadUrl(videoFileName, userId);
@@ -34,10 +31,9 @@ public class VideoController {
     @GetMapping("/presign-download")
     public ResponseEntity<String> getPresignedDownloadUrl(
             @RequestParam String objectKey,
-            Authentication authentication) {
-        String userId = authentication.getName();
-        if (userId == null) {
-            return ResponseEntity.status(401).body("User not authenticated");
+            @RequestParam String userId) {
+        if (userId == null || userId.isEmpty()) {
+            return ResponseEntity.status(400).body("Missing userId");
         }
         try {
             String presignedUrl = videoService.generatePresignedDownloadUrl(objectKey);
@@ -53,10 +49,9 @@ public class VideoController {
             @RequestParam String title,
             @RequestParam String description,
             @RequestParam String visibility,
-            Authentication authentication) {
-        String userId = authentication.getName();
-        if (userId == null) {
-            return ResponseEntity.status(401).body("User not authenticated");
+            @RequestParam String userId) {
+        if (userId == null || userId.isEmpty()) {
+            return ResponseEntity.status(400).body("Missing userId");
         }
         try {
             videoService.saveVideoMetadata(userId, objectKey, title, description, visibility);
