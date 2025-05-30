@@ -23,13 +23,15 @@
 <script setup lang="ts">
   import { useAuthStore } from '@/stores/auth'
   import { useRouter } from 'vue-router'
+  import axios from 'axios'
 
   const authStore = useAuthStore()
   const router = useRouter()
 
-  const logout = () => {
-    authStore.logout()
-    router.push('/login')
+  const logout = async () => {
+    await axios.get('/api/logout');
+    await authStore.logout();
+    await router.push({ path: '/login' });
   }
 
   const goHome = () => {
