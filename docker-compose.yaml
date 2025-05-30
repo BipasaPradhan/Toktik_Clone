@@ -103,16 +103,15 @@ services:
 
   chunking-worker:
     build:
-      context: ./video_processing_service
+      context: ./chunking_service
       dockerfile: Dockerfile_chunking
     container_name: chunking-worker
-    command: ["celery", "-A", "app.chunking", "worker", "--pool=solo", "--loglevel=INFO", "-E"]
+    command: [ "celery", "-A", "chunking", "worker", "--pool=solo", "--loglevel=INFO", "-E", "-Q", "chunking_queue" ]
     user: "1000:1000"
     volumes:
-      - ./video_processing_service:/app
+      - ./chunking_service:/app
     depends_on:
       - redis
-      - video-processing-service
     environment:
       - S3_ENDPOINT_URL=${S3_ENDPOINT_URL}
       - S3_ACCESS_KEY=${S3_ACCESS_KEY}
