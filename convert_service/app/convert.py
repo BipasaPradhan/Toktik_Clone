@@ -6,12 +6,15 @@ from .s3_client import S3Client
 app = Celery('convert', broker='redis://redis:6379/0', backend='redis://redis:6379/0')
 s3_client = S3Client()
 
-@app.task
+@app.task(name='convert.convert_video')
 def convert_video(video_id, s3_key, output_path):
     # Download the video from S3
     input_path = f"/app/uploads/{video_id}.mp4"
     os.makedirs(os.path.dirname(input_path), exist_ok=True)
     s3_client.download_file(s3_key, input_path)
+
+    # Ensure output directory exists
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
     # Convert the video
     try:

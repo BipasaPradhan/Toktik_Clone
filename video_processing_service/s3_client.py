@@ -1,6 +1,6 @@
 import boto3
 from botocore.client import Config as BotoConfig
-from app.config import Config
+from config import Config
 
 class S3Client:
     def __init__(self):

@@ -1,7 +1,7 @@
 from fastapi import FastAPI
-from app.config import Config
-from app.models import VideoProcessRequest
-from app.tasks import process_video_task
+from config import Config
+from models import VideoProcessRequest
+from tasks import process_video_task
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -27,7 +27,7 @@ async def health_check():
 async def process_video(request: VideoProcessRequest):
     try:
         logger.info(f"Received request: video_id={request.video_id}, s3_key={request.s3_key}")
-        task = process_video_task.delay(request.video_id, request.s3_key)
+        task = process_video_task.apply_async(args=[request.video_id, request.s3_key], queue='video_processing_queue')
         logger.info(f"Task enqueued: task_id={task.id}")
         return {
             "message": "Video processing task enqueued",
