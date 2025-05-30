@@ -99,3 +99,10 @@
 }
 
 </style>
+<route lang="json5">
+{
+  meta: {
+    requiresAuth: true
+  }
+}
+</route>

@@ -21,6 +21,7 @@ export const useAuthStore = defineStore('auth', {
       this.name = name
       this.role = role
     },
+
     async logout () {
       this.loggedIn = false
       this.username = null

@@ -177,8 +177,10 @@
 }
 </style>
 
-<route lang="yaml">
-meta:
-  layout: login
-  requiresAuth: false
+<route lang="json5">
+{
+meta: {
+requiresAuth: false
+}
+}
 </route>
