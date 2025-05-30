@@ -56,13 +56,13 @@ services:
 
   convert-worker:
     build:
-      context: ./video_processing_service
+      context: ./convert_service
       dockerfile: Dockerfile_convert
     container_name: convert-worker
     command: ["celery", "-A", "app.convert", "worker", "--pool=solo", "--loglevel=INFO", "-E"]
     user: "1000:1000"
     volumes:
-      - ./video_processing_service:/app
+      - ./convert_service:/app
     depends_on:
       - redis
       - video-processing-service
