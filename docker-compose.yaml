@@ -54,6 +54,28 @@ services:
     networks:
       - redis_network
 
+  video-processing-worker:
+    build:
+      context: ./video_processing_service
+      dockerfile: Dockerfile
+    container_name: video-processing-worker
+    command: [ "celery", "-A", "app.tasks", "worker", "--pool=solo", "--loglevel=INFO", "-E" ]
+    volumes:
+      - ./video_processing_service:/app
+    depends_on:
+      - redis
+    environment:
+      - S3_ENDPOINT_URL=${S3_ENDPOINT_URL}
+      - S3_ACCESS_KEY=${S3_ACCESS_KEY}
+      - S3_SECRET_KEY=${S3_SECRET_KEY}
+      - S3_BUCKET=${S3_BUCKET}
+      - S3_REGION=${S3_REGION}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL}
+      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}
+      - DOCKER_ENV=true
+    networks:
+      - redis_network
+
   convert-worker:
     build:
       context: ./convert_service
