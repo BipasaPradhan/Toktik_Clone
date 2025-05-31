@@ -40,6 +40,7 @@ services:
       - "8002:80"
     volumes:
       - ./video_processing_service:/app
+      - counter_data:/app/counter
     depends_on:
       - redis
     environment:
@@ -63,6 +64,7 @@ services:
     command: [ "celery", "-A", "tasks", "worker", "--pool=solo", "--loglevel=INFO", "-E", "-Q", "video_processing_queue" ]
     volumes:
       - ./video_processing_service:/app
+      - counter_data:/app/counter
     depends_on:
       - redis
     environment:
@@ -156,3 +158,4 @@ networks:
 
 volumes:
   db_data:
+  counter_data:

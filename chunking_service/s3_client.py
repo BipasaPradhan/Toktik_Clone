@@ -11,18 +11,20 @@ class S3Client:
             aws_secret_access_key=os.getenv('S3_SECRET_KEY'),
             region_name=os.getenv('S3_REGION')
         )
-        self.bucket = os.getenv('S3_BUCKET')
+        self.default_bucket = os.getenv('S3_BUCKET')
 
     def download_file(self, s3_key, local_path):
         try:
             os.makedirs(os.path.dirname(local_path), exist_ok=True)
-            self.s3_client.download_file(self.bucket, s3_key, local_path)
+            self.s3_client.download_file(self.default_bucket, s3_key, local_path)
         except botocore.exceptions.ClientError as e:
             raise e
 
     def upload_file(self, local_path, bucket, s3_key):
         try:
-            # Ignore the 'bucket' parameter since it's already set as self.bucket
-            self.s3_client.upload_file(local_path, self.bucket, s3_key)
+            effective_bucket = bucket if '/' not in bucket else self.default_bucket
+            effective_key = s3_key if '/' not in bucket else f"{bucket}/{s3_key}"
+            self.s3_client.upload_file(local_path, effective_bucket, effective_key)
+            print(f"Uploaded {local_path} to s3://{effective_bucket}/{effective_key}")
         except botocore.exceptions.ClientError as e:
             raise e
