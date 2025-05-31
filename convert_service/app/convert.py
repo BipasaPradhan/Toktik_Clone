@@ -26,7 +26,7 @@ def convert_video(video_id, s3_key, output_path):
         raise Exception(f"FFmpeg error during conversion: {error_msg}")
 
     # Upload the converted video to S3
-    s3_client.upload_file(output_path, f"processed/{video_id}/converted.mp4")
+    s3_client.upload_file(output_path, f"output/{video_id}/converted.mp4")
 
     # Cleanup
     if os.path.exists(input_path):
