@@ -29,9 +29,9 @@ def convert_video(video_id, s3_key, output_path):
     s3_client.upload_file(output_path, f"output/{video_id}/converted.mp4")
 
     # Cleanup
-    if os.path.exists(input_path):
-        os.remove(input_path)
-    if os.path.exists(output_path):
-        os.remove(output_path)
+    # if os.path.exists(input_path):
+    #     os.remove(input_path)
+    # if os.path.exists(output_path):
+    #     os.remove(output_path)
 
     return output_path
