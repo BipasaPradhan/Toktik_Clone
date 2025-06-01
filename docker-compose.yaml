@@ -108,7 +108,7 @@ services:
       context: ./chunking_service
       dockerfile: Dockerfile_chunking
     container_name: chunking-worker
-    command: [ "celery", "-A", "chunking", "worker", "--pool=solo", "--loglevel=INFO", "-E", "-Q", "chunking_queue" ]
+    command: [ "celery", "-A", "app.chunking", "worker", "--pool=solo", "--loglevel=INFO", "-E", "-Q", "chunking_queue" ]
     user: "1000:1000"
     volumes:
       - ./chunking_service:/app
