@@ -21,9 +21,6 @@ def process_video_task(video_id, s3_key):
 
     os.makedirs(os.path.dirname(converted_path), exist_ok=True)
 
-    # converted_url = f"https://596cb572b0e782e28b4765cac07a6e12.r2.cloudflarestorage.com/toktikp2/output/{video_id}/converted.mp4"
-    # hls_url = f"https://596cb572b0e782e28b4765cac07a6e12.r2.cloudflarestorage.com/toktikp2/output/{video_id}/playlist.m3u8"
-
     # Chain tasks with explicit arguments
     print("Sending task to convert.convert_video")
     convert_task = app.signature('convert.convert_video', args=[video_id, s3_key, converted_path], queue='convert_queue')
@@ -40,9 +37,9 @@ def process_video_task(video_id, s3_key):
     print(f"Task chain enqueued with ID: {workflow.id}")
 
     # Cleanup
-    # files_to_remove = [local_path]
-    # for file_path in files_to_remove:
-    #     if os.path.exists(file_path):
-    #         os.remove(file_path)
+    files_to_remove = [local_path]
+    for file_path in files_to_remove:
+        if os.path.exists(file_path):
+            os.remove(file_path)
 
     return {'status': 'success', 'video_id': video_id, 'task_id': workflow.id}

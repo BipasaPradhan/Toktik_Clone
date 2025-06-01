@@ -61,11 +61,11 @@ def chunk_video_to_hls(converted_path, *args, **kwargs):
             s3_client.upload_file(f"{output_prefix}/{filename}", "toktikp2", f"output/{video_id}/{filename}")
 
     # Cleanup
-    # for filename in os.listdir(output_prefix):
-    #     file_path = os.path.join(output_prefix, filename)
-    #     if os.path.isfile(file_path):
-    #         os.remove(file_path)
-    # if os.path.exists(local_converted_path):
-    #     os.remove(local_converted_path)
+    for filename in os.listdir(output_prefix):
+        file_path = os.path.join(output_prefix, filename)
+        if os.path.isfile(file_path):
+            os.remove(file_path)
+    if os.path.exists(local_converted_path):
+        os.remove(local_converted_path)
 
     return f"{output_prefix}/playlist.m3u8"
