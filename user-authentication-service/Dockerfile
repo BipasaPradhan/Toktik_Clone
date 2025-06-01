@@ -6,6 +6,9 @@ WORKDIR /app
 
 # Copy the pom.xml and the source code to the container
 COPY codebase/pom.xml .
+
+RUN mvn dependency:go-offline
+
 COPY codebase/src ./src
 
 # Build the application using Maven (skip tests)
