@@ -129,13 +129,13 @@ services:
 
   thumbnail-worker:
     build:
-      context: ./video_processing_service
+      context: ./thumbnail_service
       dockerfile: Dockerfile_thumbnail
     container_name: thumbnail-worker
     command: ["celery", "-A", "app.thumbnail", "worker", "--pool=solo", "--loglevel=INFO", "-E"]
     user: "1000:1000"
     volumes:
-      - ./video_processing_service:/app
+      - ./thumbnail_service:/app
     depends_on:
       - redis
       - video-processing-service
