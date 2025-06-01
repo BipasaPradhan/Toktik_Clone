@@ -132,7 +132,7 @@ services:
       context: ./thumbnail_service
       dockerfile: Dockerfile_thumbnail
     container_name: thumbnail-worker
-    command: ["celery", "-A", "app.thumbnail", "worker", "--pool=solo", "--loglevel=INFO", "-E"]
+    command: [ "celery", "-A", "app.thumbnail", "worker", "--pool=solo", "--loglevel=INFO", "-E", "-Q", "thumbnail_queue" ]
     user: "1000:1000"
     volumes:
       - ./thumbnail_service:/app
