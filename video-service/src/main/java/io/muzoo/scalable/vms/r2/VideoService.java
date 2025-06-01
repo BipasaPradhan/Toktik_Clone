@@ -5,6 +5,7 @@ import io.muzoo.scalable.vms.Video;
 import io.muzoo.scalable.vms.VideoRepository;
 import io.muzoo.scalable.vms.VideoStatus;
 import jakarta.transaction.Transactional;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -34,6 +35,7 @@ public class VideoService {
     private String bucketName;
 
     // Class to hold presigned URL and objectKey
+    @Getter
     public static class PresignedUploadResponse {
         private final String presignedUrl;
         private final String objectKey;

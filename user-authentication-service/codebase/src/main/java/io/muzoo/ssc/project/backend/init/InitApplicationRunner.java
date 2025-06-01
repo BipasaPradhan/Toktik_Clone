@@ -2,7 +2,6 @@ package io.muzoo.ssc.project.backend.init;
 
 import io.muzoo.ssc.project.backend.User;
 import io.muzoo.ssc.project.backend.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.dao.DataIntegrityViolationException;

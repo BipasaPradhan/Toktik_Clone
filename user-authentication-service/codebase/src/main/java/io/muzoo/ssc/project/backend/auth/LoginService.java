@@ -4,7 +4,6 @@ package io.muzoo.ssc.project.backend.auth;
 import io.muzoo.ssc.project.backend.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.authentication.AuthenticationDetailsSource;
 import org.springframework.security.authentication.BadCredentialsException;
