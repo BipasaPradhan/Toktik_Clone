@@ -1,5 +1,6 @@
 package io.muzoo.scalable.vms.r2;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.muzoo.scalable.vms.Video;
 import io.muzoo.scalable.vms.VideoRepository;
 import io.muzoo.scalable.vms.VideoStatus;
@@ -8,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import redis.clients.jedis.Jedis;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
@@ -17,6 +19,8 @@ import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequ
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
 
 import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -98,6 +102,23 @@ public class VideoService {
 
         VideoStatus status = VideoStatus.UPLOADED;
         Video video = new Video(userId, title, description, objectKey, status, visibility);
-        return videoRepository.save(video);
+        Video savedVideo = videoRepository.save(video);
+
+        // Enqueue Celery task for video processing
+        try {
+            Jedis jedis = new Jedis("redis", 6379);
+            Map<String, String> taskData = new HashMap<>();
+            taskData.put("video_id", "video_" + savedVideo.getId());
+            taskData.put("s3_key", objectKey);
+            String taskJson = new ObjectMapper().writeValueAsString(taskData);
+
+            // Push task to Celery queue
+            jedis.lpush("celery", "{\"id\": \"video_" + savedVideo.getId() + "\", \"task\": \"tasks.process_video_task\", \"args\": [" + taskJson + "], \"kwargs\": {}, \"retries\": 0}");
+            jedis.close();
+        } catch (Exception e) {
+            throw new RuntimeException("Error enqueuing video processing task: " + e.getMessage(), e);
+        }
+
+        return savedVideo;
     }
 }
