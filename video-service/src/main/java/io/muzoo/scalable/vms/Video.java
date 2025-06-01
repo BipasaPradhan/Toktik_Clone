@@ -38,13 +38,13 @@ public class Video {
     private String objectKey;
 
     @Column
-    private String videoUrl;
+    private String hlsPlaylistUrl;
 
     @Column
     private String thumbnailUrl;
 
     @Column
-    private String hlsPlaylistUrl;
+    private String chunkedUrl;
 
     @Column
     private Double duration;
