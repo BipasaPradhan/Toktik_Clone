@@ -50,7 +50,7 @@ public class VideoService {
 
     // Presigned URL for uploading (PUT)
     public PresignedUploadResponse generatePresignedUploadUrl(String videoFileName, String userId) {
-        String baseKey = userId + "/" + videoFileName;
+        String baseKey = userId + "/output/" + videoFileName;
         String uniqueKey = baseKey + "_" + System.currentTimeMillis();
 
         PutObjectRequest putObjectRequest = PutObjectRequest.builder()
