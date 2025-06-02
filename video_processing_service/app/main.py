@@ -61,9 +61,10 @@ async def consume_redis_messages():
                 message_data = json.loads(data)
                 video_id = message_data.get('video_id')
                 s3_key = message_data.get('s3_key')
-                if video_id and s3_key:
-                    logger.info(f"Triggering process_video_task with video_id={video_id}, s3_key={s3_key}")
-                    process_video_task.apply_async(args=[video_id, s3_key], queue='video_processing_queue')
+                user_id = message_data.get('user_id')
+                if video_id and s3_key and user_id:
+                    logger.info(f"Triggering process_video_task with video_id={video_id}, s3_key={s3_key}, user_id={user_id}")
+                    process_video_task.apply_async(args=[video_id, s3_key, user_id], queue='video_processing_queue')
                 else:
                     logger.warning("Invalid message format, missing video_id or s3_key")
             except json.JSONDecodeError as e:

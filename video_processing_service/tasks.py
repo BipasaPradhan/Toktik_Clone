@@ -10,11 +10,11 @@ s3_client = S3Client()
 redis_client = redis.Redis(host='redis', port=6379, decode_responses=True)
 
 @app.task(queue='video_processing_queue')
-def process_video_task(video_id, s3_key):
+def process_video_task(video_id, s3_key, user_id):
     print(f"Enqueuing process_video_task for video_id: {video_id}")
 
-    # Extract userId from s3_key
-    user_id = s3_key.split('/')[0]
+    # # Extract userId from s3_key
+    # user_id = s3_key.split('/')[0]
     print(f"Extracted userId: {user_id}")
 
     # Download from S3
@@ -33,18 +33,21 @@ def process_video_task(video_id, s3_key):
     # Define S3 output keys
     hls_playlist_key = f"{user_id}/output/{video_id}/playlist.m3u8"
     thumbnail_key = f"{user_id}/output/{video_id}/thumb.jpg"
-    # converted_key = f"{user_id}/output/{video_id}/converted.mp4"
+    converted_key = f"{user_id}/output/{video_id}/converted.mp4"
 
     # Chain tasks
-    convert_task = app.signature('convert.convert_video', args=[video_id, s3_key, converted_path], queue='convert_queue')
-    chunking_task = app.signature('chunking.chunk_video_to_hls', args=[converted_path, output_prefix], queue='chunking_queue')
-    thumbnail_task = app.signature('thumbnail.extract_thumbnail', args=[converted_path, thumb_path], queue='thumbnail_queue')
-    update_metadata_task = app.signature('tasks.update_metadata', args=[video_id, hls_playlist_path, thumb_path, hls_playlist_key, thumbnail_key], queue='video_processing_queue')
+    convert_task = app.signature('convert.convert_video', args=[video_id, s3_key, converted_path, user_id], queue='convert_queue')
+    chunking_task = app.signature('chunking.chunk_video_to_hls', args=[output_prefix, user_id], queue='chunking_queue')
+    thumbnail_task = app.signature('thumbnail.extract_thumbnail', args=[thumb_path, user_id], queue='thumbnail_queue')
+    update_metadata_task = app.signature('tasks.update_metadata', args=[video_id, hls_playlist_key, thumbnail_key, converted_key], queue='video_processing_queue')
 
     # Run chunking and thumbnail in parallel, followed by metadata update
     workflow = chain(
         convert_task,
-        group(chunking_task, thumbnail_task),
+        group(
+            chunking_task,
+            thumbnail_task
+        ),
         update_metadata_task
     ).apply_async()
     print(f"Task chain enqueued with ID: {workflow.id}")
@@ -71,8 +74,9 @@ def process_video_task(video_id, s3_key):
     return {'status': 'success', 'video_id': video_id, 'task_id': workflow.id}
 
 @app.task(queue='video_processing_queue')
-def update_metadata(video_id, hls_playlist_path, thumb_path, hls_playlist_key, thumbnail_key):
+def update_metadata(group_result, video_id, hls_playlist_key, thumbnail_key, converted_key):
     print(f"Updating metadata for video_id: {video_id}")
+    hls_playlist_path, thumb_path = group_result
 
     # Upload HLS playlist and thumbnail to S3
     if os.path.exists(hls_playlist_path):
@@ -92,6 +96,7 @@ def update_metadata(video_id, hls_playlist_path, thumb_path, hls_playlist_key, t
         "video_id": video_id,
         "hls_playlist_url": hls_playlist_key,
         "thumbnail_url": thumbnail_key,
+        "converted_url": converted_key,
         "duration": None  # Add duration if computed (e.g., via ffmpeg.probe)
     }
     redis_client.publish("video:processed", json.dumps(message))

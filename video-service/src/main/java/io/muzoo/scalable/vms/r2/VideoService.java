@@ -119,7 +119,8 @@ public class VideoService {
         String videoId = savedVideo.getId().toString(); // Use database ID
         Map<String, String> message = Map.of(
                 "video_id", videoId,
-                "s3_key", objectKey
+                "s3_key", objectKey,
+                "user_id", userId
         );
         System.out.println("Publishing to video:process channel: video_id=" + videoId + ", s3_key=" + objectKey);
         redisPublisher.publish("video:process", message);
@@ -129,7 +130,7 @@ public class VideoService {
 
     // Update metadata after workers
     @Transactional
-    public Video updateVideoMetadata(Long videoId, String hlsPlaylistUrl, String thumbnailUrl, Double duration) {
+    public Video updateVideoMetadata(Long videoId, String hlsPlaylistUrl, String thumbnailUrl, String convertedUrl, Double duration) {
         System.out.println("Updating metadata for videoId: " + videoId + ", hlsPlaylistUrl: " + hlsPlaylistUrl +
                 ", thumbnailUrl: " + thumbnailUrl + ", duration: " + duration);
         Video video = videoRepository.findById(videoId)
@@ -139,7 +140,8 @@ public class VideoService {
                 });
         video.setHlsPlaylistUrl(hlsPlaylistUrl);
         video.setThumbnailUrl(thumbnailUrl);
-         video.setDuration(duration); // if duration is there
+        video.setChunkedUrl(convertedUrl);
+        video.setDuration(duration); // if duration is there
         video.setStatus(VideoStatus.UPLOADED);
         Video updatedVideo = videoRepository.save(video);
         System.out.println("Updated video metadata for ID: " + videoId + ", status: " + VideoStatus.UPLOADED);

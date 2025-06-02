@@ -27,13 +27,14 @@ public class RedisMessageListener implements MessageListener {
             Long videoId = Long.parseLong(data.get("video_id"));
             String hlsPlaylistUrl = data.get("hls_playlist_url");
             String thumbnailUrl = data.get("thumbnail_url");
+            String convertedUrl = data.get("converted_url");
             Double duration = data.get("duration") != null ? Double.parseDouble(data.get("duration")) : null;
 
-            logger.info("Received video:processed message: video_id={}, hlsPlaylistUrl={}, thumbnailUrl={}, duration={}",
+            logger.info("Received video:processed message: video_id={}, hlsPlaylistUrl={}, thumbnailUrl={}, convertedUrl={} duration={}",
                     videoId, hlsPlaylistUrl, thumbnailUrl, duration);
 
             // Update video metadata
-            videoService.updateVideoMetadata(videoId, hlsPlaylistUrl, thumbnailUrl, duration);
+            videoService.updateVideoMetadata(videoId, hlsPlaylistUrl, thumbnailUrl, convertedUrl, duration);
         } catch (Exception e) {
             logger.error("Error processing video:processed message: {}", e.getMessage(), e);
         }

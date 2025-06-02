@@ -28,8 +28,7 @@ def convert_video(video_id, s3_key, output_path, user_id):
 
     # Upload the converted video to S3
     s3_key = f"{user_id}/output/{video_id}/converted.mp4"
-    s3_client.upload_file(output_path, "toktikp2", s3_key)
-
+    s3_client.upload_file(output_path, s3_key)
     # Cleanup
     if os.path.exists(input_path):
         os.remove(input_path)

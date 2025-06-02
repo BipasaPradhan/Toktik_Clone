@@ -47,8 +47,4 @@ public class RedisConfig {
         return new MessageListenerAdapter(listener, "onMessage");
     }
 
-    @Bean
-    public ObjectMapper objectMapper() {
-        return new ObjectMapper();
-    }
 }
