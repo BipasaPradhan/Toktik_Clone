@@ -118,13 +118,13 @@ public class VideoService {
 //        return savedVideo;
 
         // Publish to Redis Pub/Sub
-        String videoId = savedVideo.getId().toString(); // Use database ID
-        Map<String, String> message = Map.of(
-                "video_id", videoId,
-                "s3_key", objectKey
-        );
-        System.out.println("Publishing to video:process channel: video_id=" + videoId + ", s3_key=" + objectKey);
-        redisPublisher.publish("video:process", message);
+//        String videoId = savedVideo.getId().toString(); // Use database ID
+//        Map<String, String> message = Map.of(
+//                "video_id", videoId,
+//                "s3_key", objectKey
+//        );
+//        System.out.println("Publishing to video:process channel: video_id=" + videoId + ", s3_key=" + objectKey);
+//        redisPublisher.publish("video:process", message);
 
         return savedVideo;
     }
