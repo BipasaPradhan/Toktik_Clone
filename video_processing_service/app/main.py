@@ -5,6 +5,8 @@ from tasks import process_video_task
 import logging
 import os
 import json
+import redis
+import asyncio
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -40,6 +42,37 @@ process_video_task._app.conf.update(
     broker_url=Config.CELERY_BROKER_URL,
     result_backend=Config.CELERY_RESULT_BACKEND
 )
+
+# Redis client
+redis_client = redis.Redis(host='redis', port=6379, decode_responses=True)
+
+async def consume_redis_messages():
+    pubsub = redis_client.pubsub()
+    pubsub.subscribe('video:process')
+    logger.info("Subscribed to video:process channel")
+    while True:
+        message = pubsub.get_message()
+        if message and message['type'] == 'message':
+            data = message['data']
+            logger.info(f"Received Redis message: {data}")
+            try:
+                # Parse the message (assuming it's a JSON string)
+                import json
+                message_data = json.loads(data)
+                video_id = message_data.get('video_id')
+                s3_key = message_data.get('s3_key')
+                if video_id and s3_key:
+                    logger.info(f"Triggering process_video_task with video_id={video_id}, s3_key={s3_key}")
+                    process_video_task.apply_async(args=[video_id, s3_key], queue='video_processing_queue')
+                else:
+                    logger.warning("Invalid message format, missing video_id or s3_key")
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse Redis message: {e}")
+        await asyncio.sleep(0.1)  # Avoid busy loop
+
+@app.on_event("startup")
+async def startup_event():
+    asyncio.create_task(consume_redis_messages())
 
 @app.get("/health")
 async def health_check():

@@ -9,6 +9,10 @@ s3_client = S3Client()
 def process_video_task(video_id, s3_key):
     print(f"Enqueuing process_video_task for video_id: {video_id}")
 
+    # Extract userId from s3_key
+    user_id = s3_key.split('/')[0]
+    print(f"Extracted userId: {user_id}")
+
     # Download from S3
     local_path = f"/app/uploads/{video_id}.mp4"
     s3_client.download_file(s3_key, local_path)

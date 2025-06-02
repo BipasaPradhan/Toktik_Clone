@@ -9,11 +9,11 @@ app = Celery('thumbnail', broker='redis://redis:6379/0', backend='redis://redis:
 s3_client = S3Client()
 
 @app.task(name='thumbnail.extract_thumbnail', queue='thumbnail_queue')
-def extract_thumbnail(converted_path, thumb_path, request=None):
+def extract_thumbnail(converted_path, thumb_path, user_id):
     # Extract video_id from converted_path
-    print(f"Received arguments - converted_path: {converted_path}, thumb_path: {thumb_path}")
+    print(f"Received arguments - converted_path: {converted_path}, thumb_path: {thumb_path}, user_id: {user_id}")
     video_id = os.path.basename(os.path.dirname(converted_path))
-    s3_key_converted = f"output/{video_id}/converted.mp4"
+    s3_key_converted = f"{user_id}/output/{video_id}/converted.mp4"
     local_temp_path = f"/tmp/{video_id}_converted.mp4"
     thumb_path = f"/app/output/{video_id}/thumb.jpg"
     print(f"Overriding thumb_path to: {thumb_path}")
@@ -43,7 +43,7 @@ def extract_thumbnail(converted_path, thumb_path, request=None):
         raise Exception(f"FFmpeg error during thumbnail extraction: {error_msg}")
 
     # Upload to R2
-    s3_key = f"output/{video_id}/thumb.jpg"
+    s3_key = f"{user_id}/output/{video_id}/thumb.jpg"
     s3_client.upload_file(thumb_path, "toktikp2", s3_key)
     print(f"Uploaded thumbnail to R2: {s3_key}")
 

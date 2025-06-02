@@ -8,7 +8,7 @@ app = Celery('convert', broker='redis://redis:6379/0', backend='redis://redis:63
 s3_client = S3Client()
 
 @app.task(name='convert.convert_video')
-def convert_video(video_id, s3_key, output_path):
+def convert_video(video_id, s3_key, output_path, user_id):
     # Download the video from S3
     input_path = f"/app/uploads/{video_id}.mp4"
     os.makedirs(os.path.dirname(input_path), exist_ok=True)
@@ -27,7 +27,8 @@ def convert_video(video_id, s3_key, output_path):
         raise Exception(f"FFmpeg error during conversion: {error_msg}")
 
     # Upload the converted video to S3
-    s3_client.upload_file(output_path, f"output/{video_id}/converted.mp4")
+    s3_key = f"{user_id}/output/{video_id}/converted.mp4"
+    s3_client.upload_file(output_path, "toktikp2", s3_key)
 
     # Cleanup
     if os.path.exists(input_path):
