@@ -85,9 +85,11 @@ export default defineConfig({
     port: 8000,
     proxy: {
       '/api': {
-        // proxy everything from frontend http://localhost:8080/api/** to backend at http://localhost:8081/api/**
-        // that is why all api path on backend should begin with /api
         target: 'http://localhost:8080',
+      },
+      '/videos': {
+        target: 'http://localhost:8081',
+        rewrite: path => path.replace(/^\/videos/, '/api/videos'),
       },
     },
   },
