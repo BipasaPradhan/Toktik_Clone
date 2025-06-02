@@ -48,23 +48,21 @@ public class VideoService {
         }
     }
 
-    // Presigned URL for uploading (PUT)
     public PresignedUploadResponse generatePresignedUploadUrl(String videoFileName, String userId) {
-        String baseKey = userId + "/output/" + videoFileName;
-        String uniqueKey = baseKey + "_" + System.currentTimeMillis();
-
+        // Ensure videoFileName is used as the base name, appending timestamp
+        String timestamp = String.valueOf(System.currentTimeMillis());
+        String uniqueFileName = videoFileName.replace(".mp4", "_" + timestamp + ".mp4"); // e.g., video_1234567890.mp4
+        String baseKey = userId + "/output/" + uniqueFileName;
         PutObjectRequest putObjectRequest = PutObjectRequest.builder()
                 .bucket(bucketName)
-                .key(uniqueKey)
+                .key(baseKey)
                 .build();
-
         PutObjectPresignRequest presignRequest = PutObjectPresignRequest.builder()
                 .signatureDuration(Duration.ofMinutes(60))
                 .putObjectRequest(putObjectRequest)
                 .build();
-
         PresignedPutObjectRequest presignedRequest = s3Presigner.presignPutObject(presignRequest);
-        return new PresignedUploadResponse(presignedRequest.url().toString(), uniqueKey);
+        return new PresignedUploadResponse(presignedRequest.url().toString(), baseKey);
     }
 
     // Presigned URL for downloading (GET)
@@ -118,13 +116,13 @@ public class VideoService {
 //        return savedVideo;
 
         // Publish to Redis Pub/Sub
-//        String videoId = savedVideo.getId().toString(); // Use database ID
-//        Map<String, String> message = Map.of(
-//                "video_id", videoId,
-//                "s3_key", objectKey
-//        );
-//        System.out.println("Publishing to video:process channel: video_id=" + videoId + ", s3_key=" + objectKey);
-//        redisPublisher.publish("video:process", message);
+        String videoId = savedVideo.getId().toString(); // Use database ID
+        Map<String, String> message = Map.of(
+                "video_id", videoId,
+                "s3_key", objectKey
+        );
+        System.out.println("Publishing to video:process channel: video_id=" + videoId + ", s3_key=" + objectKey);
+        redisPublisher.publish("video:process", message);
 
         return savedVideo;
     }
