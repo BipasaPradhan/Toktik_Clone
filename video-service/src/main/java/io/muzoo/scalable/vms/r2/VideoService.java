@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.muzoo.scalable.vms.Video;
 import io.muzoo.scalable.vms.VideoRepository;
 import io.muzoo.scalable.vms.VideoStatus;
+import io.muzoo.scalable.vms.redis.RedisPublisher;
 import jakarta.transaction.Transactional;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +31,7 @@ public class VideoService {
     private final S3Presigner s3Presigner;
     private final S3Client s3Client;
     private final VideoRepository videoRepository;
+    private final RedisPublisher redisPublisher;
 
     @Value("${cloudflare.r2.bucket-name}")
     private String bucketName;
@@ -43,14 +45,6 @@ public class VideoService {
         public PresignedUploadResponse(String presignedUrl, String objectKey) {
             this.presignedUrl = presignedUrl;
             this.objectKey = objectKey;
-        }
-
-        public String getPresignedUrl() {
-            return presignedUrl;
-        }
-
-        public String getObjectKey() {
-            return objectKey;
         }
     }
 
@@ -102,25 +96,55 @@ public class VideoService {
             throw new RuntimeException("Error checking object in R2: " + e.getMessage(), e);
         }
 
-        VideoStatus status = VideoStatus.UPLOADED;
+        VideoStatus status = VideoStatus.PROCESSING; //processing once uploaded whole OG file to r2
         Video video = new Video(userId, title, description, objectKey, status, visibility);
         Video savedVideo = videoRepository.save(video);
 
-        // Enqueue Celery task for video processing
-        try {
-            Jedis jedis = new Jedis("redis", 6379);
-            Map<String, String> taskData = new HashMap<>();
-            taskData.put("video_id", "video_" + savedVideo.getId());
-            taskData.put("s3_key", objectKey);
-            String taskJson = new ObjectMapper().writeValueAsString(taskData);
+//        // Enqueue Celery task for video processing
+//        try {
+//            Jedis jedis = new Jedis("redis", 6379);
+//            Map<String, String> taskData = new HashMap<>();
+//            taskData.put("video_id", "video_" + savedVideo.getId());
+//            taskData.put("s3_key", objectKey);
+//            String taskJson = new ObjectMapper().writeValueAsString(taskData);
+//
+//            // Push task to Celery queue
+//            jedis.lpush("celery", "{\"id\": \"video_" + savedVideo.getId() + "\", \"task\": \"tasks.process_video_task\", \"args\": [" + taskJson + "], \"kwargs\": {}, \"retries\": 0}");
+//            jedis.close();
+//        } catch (Exception e) {
+//            throw new RuntimeException("Error enqueuing video processing task: " + e.getMessage(), e);
+//        }
+//
+//        return savedVideo;
 
-            // Push task to Celery queue
-            jedis.lpush("celery", "{\"id\": \"video_" + savedVideo.getId() + "\", \"task\": \"tasks.process_video_task\", \"args\": [" + taskJson + "], \"kwargs\": {}, \"retries\": 0}");
-            jedis.close();
-        } catch (Exception e) {
-            throw new RuntimeException("Error enqueuing video processing task: " + e.getMessage(), e);
-        }
+        // Publish to Redis Pub/Sub
+        String videoId = savedVideo.getId().toString(); // Use database ID
+        Map<String, String> message = Map.of(
+                "video_id", videoId,
+                "s3_key", objectKey
+        );
+        System.out.println("Publishing to video:process channel: video_id=" + videoId + ", s3_key=" + objectKey);
+        redisPublisher.publish("video:process", message);
 
         return savedVideo;
+    }
+
+    // Update metadata after workers
+    @Transactional
+    public Video updateVideoMetadata(Long videoId, String hlsPlaylistUrl, String thumbnailUrl, Double duration) {
+        System.out.println("Updating metadata for videoId: " + videoId + ", hlsPlaylistUrl: " + hlsPlaylistUrl +
+                ", thumbnailUrl: " + thumbnailUrl + ", duration: " + duration);
+        Video video = videoRepository.findById(videoId)
+                .orElseThrow(() -> {
+                    System.out.println("Video not found with ID: " + videoId);
+                    return new IllegalArgumentException("Video not found with ID: " + videoId);
+                });
+        video.setHlsPlaylistUrl(hlsPlaylistUrl);
+        video.setThumbnailUrl(thumbnailUrl);
+        // video.setDuration(duration); // if duration is there
+        video.setStatus(VideoStatus.UPLOADED);
+        Video updatedVideo = videoRepository.save(video);
+        System.out.println("Updated video metadata for ID: " + videoId + ", status: " + VideoStatus.UPLOADED);
+        return updatedVideo;
     }
 }
