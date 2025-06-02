@@ -2,6 +2,7 @@ import ffmpeg
 from celery import Celery
 import os
 import time
+import shutil
 from s3_client import S3Client
 from botocore.exceptions import ClientError
 
@@ -67,5 +68,11 @@ def chunk_video_to_hls(converted_path, *args, **kwargs):
             os.remove(file_path)
     if os.path.exists(local_converted_path):
         os.remove(local_converted_path)
+
+    # Remove the empty output directory
+    output_dir = output_prefix
+    if os.path.exists(output_dir) and not os.listdir(output_dir):
+        shutil.rmtree(output_dir)
+        print(f"Removed empty output directory {output_dir}")
 
     return f"{output_prefix}/playlist.m3u8"

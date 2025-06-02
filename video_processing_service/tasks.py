@@ -1,5 +1,5 @@
 from celery import Celery, chain, group
-import os
+import os, shutil
 from s3_client import S3Client
 
 app = Celery('tasks', broker='redis://redis:6379/0', backend='redis://redis:6379/0')
@@ -40,6 +40,19 @@ def process_video_task(video_id, s3_key):
     files_to_remove = [local_path]
     for file_path in files_to_remove:
         if os.path.exists(file_path):
-            os.remove(file_path)
+            print(f"Attempting to remove {file_path}")
+            try:
+                os.remove(file_path)
+                print(f"Successfully removed {file_path}")
+            except Exception as e:
+                print(f"Failed to remove {file_path}: {e}")
+        else:
+            print(f"File {file_path} does not exist for cleanup")
+
+    # Cleanup the empty output directory
+    output_dir = os.path.dirname(converted_path)
+    if os.path.exists(output_dir) and not os.listdir(output_dir):  # Check if directory is empty
+        shutil.rmtree(output_dir)
+        print(f"Removed empty output directory {output_dir}")
 
     return {'status': 'success', 'video_id': video_id, 'task_id': workflow.id}

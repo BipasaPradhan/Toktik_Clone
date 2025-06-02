@@ -1,6 +1,7 @@
 import ffmpeg
 from celery import Celery
 import os
+import shutil
 from .s3_client import S3Client
 from botocore.exceptions import ClientError
 
@@ -51,5 +52,11 @@ def extract_thumbnail(converted_path, thumb_path, request=None):
         os.remove(local_temp_path)
     if os.path.exists(thumb_path):
         os.remove(thumb_path)
+
+    # Remove the empty output directory
+    output_dir = os.path.dirname(thumb_path)
+    if os.path.exists(output_dir) and not os.listdir(output_dir):
+        shutil.rmtree(output_dir)
+        print(f"Removed empty output directory {output_dir}")
 
     return thumb_path

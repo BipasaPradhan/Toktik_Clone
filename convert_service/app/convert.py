@@ -1,6 +1,7 @@
 import ffmpeg
 from celery import Celery
 import os
+import shutil
 from .s3_client import S3Client
 
 app = Celery('convert', broker='redis://redis:6379/0', backend='redis://redis:6379/0')
@@ -33,5 +34,11 @@ def convert_video(video_id, s3_key, output_path):
         os.remove(input_path)
     if os.path.exists(output_path):
         os.remove(output_path)
+
+    # Remove the empty output directory
+    output_dir = os.path.dirname(output_path)
+    if os.path.exists(output_dir) and not os.listdir(output_dir):
+        shutil.rmtree(output_dir)
+        print(f"Removed empty output directory {output_dir}")
 
     return output_path
