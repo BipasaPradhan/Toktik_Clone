@@ -139,10 +139,11 @@ public class VideoService {
                 });
         video.setHlsPlaylistUrl(hlsPlaylistUrl);
         video.setThumbnailUrl(thumbnailUrl);
-        // video.setDuration(duration); // if duration is there
+         video.setDuration(duration); // if duration is there
         video.setStatus(VideoStatus.UPLOADED);
         Video updatedVideo = videoRepository.save(video);
         System.out.println("Updated video metadata for ID: " + videoId + ", status: " + VideoStatus.UPLOADED);
         return updatedVideo;
     }
+
 }

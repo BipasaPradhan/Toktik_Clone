@@ -1,9 +1,12 @@
 from celery import Celery, chain, group
 import os, shutil
 from s3_client import S3Client
+import redis
+import json
 
 app = Celery('tasks', broker='redis://redis:6379/0', backend='redis://redis:6379/0')
 s3_client = S3Client()
+redis_client = redis.Redis(host='redis', port=6379, decode_responses=True)
 
 @app.task(queue='video_processing_queue')
 def process_video_task(video_id, s3_key):
@@ -25,20 +28,34 @@ def process_video_task(video_id, s3_key):
 
     os.makedirs(os.path.dirname(converted_path), exist_ok=True)
 
-    # Chain tasks with explicit arguments
-    print("Sending task to convert.convert_video")
-    convert_task = app.signature('convert.convert_video', args=[video_id, s3_key, converted_path], queue='convert_queue')
-    chunking_task = app.signature('chunking.chunk_video_to_hls', args=[converted_path, output_prefix], queue='chunking_queue')
-    thumbnail_task = app.signature('thumbnail.extract_thumbnail', args=[converted_path, thumb_path], queue='thumbnail_queue')
-    # db_task = app.signature('video_service.update_urls', args=[s3_key, converted_url, hls_url], queue='video_service_queue')
+    # Define S3 paths for processed files
+    s3_converted_path = f"{user_id}/output/{video_id}/converted.mp4"
+    s3_hls_path = f"{user_id}/output/{video_id}/playlist.m3u8"
+    s3_thumb_path = f"{user_id}/output/{video_id}/thumb.jpg"
 
-    # Use a group to run chunking and thumbnail in parallel after conversion
+    # Chain tasks with user_id
+    convert_task = app.signature('convert.convert_video', args=[video_id, s3_key, converted_path, user_id], queue='convert_queue')
+    chunking_task = app.signature('chunking.chunk_video_to_hls', args=[converted_path, output_prefix, user_id], queue='chunking_queue')
+    thumbnail_task = app.signature('thumbnail.extract_thumbnail', args=[converted_path, thumb_path, user_id], queue='thumbnail_queue')
+
     workflow = chain(
         convert_task,
         group(chunking_task, thumbnail_task),
-        # db_task
     ).apply_async()
     print(f"Task chain enqueued with ID: {workflow.id}")
+
+    # Wait for tasks to complete
+    workflow.get()
+
+    # Publish to video:processed channel
+    message = {
+        "video_id": str(video_id),
+        "hls_playlist_url": s3_hls_path,
+        "thumbnail_url": s3_thumb_path,
+        "duration": None  # Add duration logic if needed
+    }
+    redis_client.publish("video:processed", json.dumps(message))
+    print(f"Published to video:processed: {message}")
 
     # Cleanup
     files_to_remove = [local_path]
@@ -53,9 +70,8 @@ def process_video_task(video_id, s3_key):
         else:
             print(f"File {file_path} does not exist for cleanup")
 
-    # Cleanup the empty output directory
     output_dir = os.path.dirname(converted_path)
-    if os.path.exists(output_dir) and not os.listdir(output_dir):  # Check if directory is empty
+    if os.path.exists(output_dir) and not os.listdir(output_dir):
         shutil.rmtree(output_dir)
         print(f"Removed empty output directory {output_dir}")
 

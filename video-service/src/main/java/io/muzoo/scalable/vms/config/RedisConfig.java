@@ -1,5 +1,6 @@
 package io.muzoo.scalable.vms.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.muzoo.scalable.vms.redis.RedisMessageListener;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -30,6 +31,11 @@ public class RedisConfig {
         container.setConnectionFactory(connectionFactory);
         container.addMessageListener(listenerAdapter, new PatternTopic("video:processed"));
         return container;
+    }
+
+    @Bean
+    public ObjectMapper objectMapper() {
+        return new ObjectMapper();
     }
 
     @Bean

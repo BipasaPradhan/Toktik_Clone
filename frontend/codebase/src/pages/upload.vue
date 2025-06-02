@@ -167,7 +167,7 @@
       }
       throw new Error('Failed to save metadata');
     }
-    return await res.text();
+    return await res.json(); // Expect JSON with videoId
   };
 
   const handleSubmit = async () => {
