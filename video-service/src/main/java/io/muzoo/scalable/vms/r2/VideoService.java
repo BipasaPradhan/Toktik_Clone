@@ -22,6 +22,7 @@ import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignReques
 
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -45,6 +46,28 @@ public class VideoService {
         public PresignedUploadResponse(String presignedUrl, String objectKey) {
             this.presignedUrl = presignedUrl;
             this.objectKey = objectKey;
+        }
+    }
+
+    // DTO for video details response
+    @Getter
+    public static class VideoDetailsResponse {
+        private final String hlsUrl;
+        private final String thumbnailUrl;
+        private final String convertedUrl;
+        private final String title;
+        private final String description;
+        private final String userId;
+        private final Double duration;
+
+        public VideoDetailsResponse(String hlsUrl, String thumbnailUrl, String convertedUrl, String title, String description, String userId, Double duration) {
+            this.hlsUrl = hlsUrl;
+            this.thumbnailUrl = thumbnailUrl;
+            this.convertedUrl = convertedUrl;
+            this.title = title;
+            this.description = description;
+            this.userId = userId;
+            this.duration = duration;
         }
     }
 
@@ -98,23 +121,6 @@ public class VideoService {
         Video video = new Video(userId, title, description, objectKey, status, visibility);
         Video savedVideo = videoRepository.save(video);
 
-//        // Enqueue Celery task for video processing
-//        try {
-//            Jedis jedis = new Jedis("redis", 6379);
-//            Map<String, String> taskData = new HashMap<>();
-//            taskData.put("video_id", "video_" + savedVideo.getId());
-//            taskData.put("s3_key", objectKey);
-//            String taskJson = new ObjectMapper().writeValueAsString(taskData);
-//
-//            // Push task to Celery queue
-//            jedis.lpush("celery", "{\"id\": \"video_" + savedVideo.getId() + "\", \"task\": \"tasks.process_video_task\", \"args\": [" + taskJson + "], \"kwargs\": {}, \"retries\": 0}");
-//            jedis.close();
-//        } catch (Exception e) {
-//            throw new RuntimeException("Error enqueuing video processing task: " + e.getMessage(), e);
-//        }
-//
-//        return savedVideo;
-
         // Publish to Redis Pub/Sub
         String videoId = savedVideo.getId().toString(); // Use database ID
         Map<String, String> message = Map.of(
@@ -148,4 +154,27 @@ public class VideoService {
         return updatedVideo;
     }
 
+    public List<Video> getVideoFeed(int page, int size) {
+        if (page < 1 || size < 1) {
+            throw new IllegalArgumentException("Page and size must be positive integers");
+        }
+        int offset = (page - 1) * size;
+        return videoRepository.findByVisibilityAndStatus("Public", VideoStatus.UPLOADED, size, offset);
+    }
+
+    public VideoDetailsResponse getVideoDetails(Long videoId, String userId) {
+        Video video = videoRepository.findById(videoId)
+                .orElseThrow(() -> new IllegalArgumentException("Video not found with ID: " + videoId));
+
+        if (!"Public".equals(video.getVisibility()) && !video.getUserId().equals(userId)) {
+            throw new SecurityException("Access denied: Video is private or not owned by the user");
+        }
+
+        // Generate presigned URLs
+        String hlsUrl = generatePresignedDownloadUrl(video.getHlsPlaylistUrl());
+        String thumbnailUrl = generatePresignedDownloadUrl(video.getThumbnailUrl());
+        String convertedUrl = video.getChunkedUrl() != null ? generatePresignedDownloadUrl(video.getChunkedUrl()) : null;
+
+        return new VideoDetailsResponse(hlsUrl, thumbnailUrl, convertedUrl, video.getTitle(), video.getDescription(), video.getUserId(), video.getDuration());
+    }
 }
