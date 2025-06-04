@@ -3,7 +3,7 @@
     <!-- Top Navigation Bar -->
     <div class="top-bar px-4 py-4">
       <!-- Left: Toctik logo -->
-      <v-btn class="toc-btn" variant="text" @click="goHome">
+      <v-btn class="toc-btn" size="large" variant="text" @click="goHome">
         TocTik
       </v-btn>
 

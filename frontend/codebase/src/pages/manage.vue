@@ -1,19 +1,21 @@
 <template>
   <v-main class="home-background">
-    <v-container class="max-width-container">
-      <v-row class="align-center justify-space-between mb-6 pa-4" style="position: sticky; top: 0; background: #f5f5f0; z-index: 1;">
-        <v-col cols="auto">
-          <v-btn class="toc-btn" variant="text" @click="goHome">
-            TocTik
-          </v-btn>
-        </v-col>
-        <v-col cols="auto">
-          <v-btn class="upload-btn" variant="outlined" @click="goToUpload">
-            Upload New Video
-          </v-btn>
-        </v-col>
-      </v-row>
+    <!-- Top Navigation Bar -->
+    <div class="top-bar px-4 py-4">
+      <!-- Left: Toctik logo -->
+      <v-btn class="toc-btn" size="large" variant="text" @click="goHome">
+        TocTik
+      </v-btn>
 
+      <!-- Right: Upload button -->
+      <div class="top-buttons">
+        <v-btn class="upload-btn" variant="outlined" @click="goToUpload">
+          Upload New Video
+        </v-btn>
+      </div>
+    </div>
+
+    <v-container class="max-width-container">
       <!-- Loading State -->
       <v-row v-if="loading" justify="center">
         <v-progress-circular class="my-8" color="#800020" indeterminate />
@@ -202,9 +204,25 @@
 }
 
 .max-width-container {
-  max-width: 1200px; // Slightly smaller, adjustable
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 0 16px; // Add padding for smaller screens
+  padding: 0 16px;
+}
+
+.top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.top-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+.toc-btn {
+  font-size: 1.5rem !important; // Larger text for visibility
+  padding: 8px 16px !important; // Increase padding for size
 }
 
 .upload-btn {
@@ -227,8 +245,8 @@
 .thumbnail-wrapper {
   position: relative;
   width: 100%;
-  padding-top: 56.25%; // 16:9 aspect ratio (9 / 16 * 100%)
-  background-color: #000; // Black bars (will be cropped with object-fit: cover)
+  padding-top: 56.25%; // 16:9 aspect ratio
+  background-color: #000;
 }
 
 .thumbnail {
@@ -237,8 +255,8 @@
   left: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover; // Crop to fill 16:9, removing black bars
-  border-radius: 8px 0 0 8px; // Rounded corners on top-left and bottom-left
+  object-fit: cover;
+  border-radius: 8px 0 0 8px;
 }
 
 .video-list {
