@@ -159,6 +159,7 @@ public class VideoService {
                 .description(video.getDescription())
                 .userId(video.getUserId())
                 .duration(video.getDuration())
+                .uploadTime(video.getUploadTime() != null ? video.getUploadTime().toString() : null)
                 .build();
     }
 
