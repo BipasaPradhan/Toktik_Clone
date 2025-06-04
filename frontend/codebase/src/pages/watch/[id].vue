@@ -90,6 +90,9 @@
       console.log('Sending request to /api/videos/details with params:', { videoId, userId })
       const response = await axios.get(`/api/videos/details`, {
         params: { videoId, userId },
+        headers: {
+          'X-User-Id': userId,
+        },
       })
       console.log('Video Details Response:', JSON.stringify(response.data, null, 2))
       console.log('Raw HLS Playlist Content:', response.data.hlsUrl)
