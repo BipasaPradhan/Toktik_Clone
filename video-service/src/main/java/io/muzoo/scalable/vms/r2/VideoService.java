@@ -72,7 +72,7 @@ public class VideoService {
                 .build();
 
         GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
-                .signatureDuration(Duration.ofMinutes(60))
+                .signatureDuration(Duration.ofHours(24)) // Increased to 24 hours
                 .getObjectRequest(getObjectRequest)
                 .build();
 
