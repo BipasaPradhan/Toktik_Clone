@@ -117,9 +117,6 @@
   const router = useRouter()
   const authStore = useAuthStore()
 
-  // Define the API base URL
-  const API_BASE_URL = 'http://localhost:8081'
-
   // Define Video interface to match API response
   interface Video {
     id: number
@@ -143,7 +140,7 @@
     try {
       loading.value = true
       const userId = authStore.username || ''
-      const response = await axios.get(`${API_BASE_URL}/api/videos/my`, {
+      const response = await axios.get(`/videos/my`, {
         params: { page: page.value, size: 20 },
         headers: { 'X-User-Id': userId },
       })
@@ -172,7 +169,7 @@
   const saveEdit = async () => {
     try {
       const userId = authStore.username || ''
-      await axios.put(`${API_BASE_URL}/api/videos/${editedVideo.value.id}`, {
+      await axios.put(`/videos/${editedVideo.value.id}`, {
         title: editedVideo.value.title,
         description: editedVideo.value.description,
         visibility: editedVideo.value.visibility,
@@ -221,8 +218,8 @@
 }
 
 .toc-btn {
-  font-size: 1.5rem !important; // Larger text for visibility
-  padding: 8px 16px !important; // Increase padding for size
+  font-size: 1.5rem !important;
+  padding: 8px 16px !important;
 }
 
 .upload-btn {

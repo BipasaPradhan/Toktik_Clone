@@ -67,9 +67,6 @@
   import { onMounted, ref } from 'vue'
   import axios, { AxiosError } from 'axios'
 
-  // Define the API base URL
-  const API_BASE_URL = 'http://localhost:8081'
-
   const authStore = useAuthStore()
   const router = useRouter()
 
@@ -92,8 +89,8 @@
   const fetchVideos = async () => {
     try {
       loading.value = true
-      console.log('Fetching videos from:', `${API_BASE_URL}/api/videos/feed?page=${page.value}&size=20`)
-      const response = await axios.get(`${API_BASE_URL}/api/videos/feed`, {
+      console.log('Fetching videos from:', `/videos/feed?page=${page.value}&size=20`)
+      const response = await axios.get(`/videos/feed`, {
         params: { page: page.value, size: 20 },
       })
       console.log('Full API Response:', JSON.stringify(response.data, null, 2))
@@ -115,7 +112,7 @@
     try {
       const userId = authStore.username || ''
       console.log(`Fetching thumbnail for videoId ${videoId}, userId ${userId}`)
-      const response = await axios.get(`${API_BASE_URL}/api/videos/details`, {
+      const response = await axios.get(`/videos/details`, {
         params: { videoId, userId },
       })
       console.log('Thumbnail Response:', JSON.stringify(response.data, null, 2))
