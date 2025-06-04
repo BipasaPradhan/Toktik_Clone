@@ -65,7 +65,7 @@
   import { useAuthStore } from '@/stores/auth'
   import { useRouter } from 'vue-router'
   import { onMounted, ref } from 'vue'
-  import axios from 'axios'
+  import axios, { AxiosError } from 'axios'
 
   // Define the API base URL
   const API_BASE_URL = 'http://localhost:8081'
@@ -102,8 +102,9 @@
       videos.value = [...videos.value, ...newVideos]
       // Pre-fetch thumbnails
       await Promise.all(newVideos.map(video => fetchThumbnail(video.id)))
-    } catch (error: any) {
-      console.error('Error fetching videos:', error.message, error.response?.data || error.response?.status)
+    } catch (error) {
+      const axiosError = error as AxiosError
+      console.error('Error fetching videos:', axiosError.message, axiosError.response?.data || axiosError.response?.status)
     } finally {
       loading.value = false
     }
@@ -119,8 +120,9 @@
       })
       console.log('Thumbnail Response:', JSON.stringify(response.data, null, 2))
       thumbnailUrls.value[videoId] = response.data.thumbnailUrl || 'https://via.placeholder.com/150'
-    } catch (error: any) {
-      console.error('Error fetching thumbnail for videoId', videoId, error.message, error.response?.data)
+    } catch (error) {
+      const axiosError = error as AxiosError
+      console.error('Error fetching thumbnail for videoId', videoId, axiosError.message, axiosError.response?.data)
       thumbnailUrls.value[videoId] = 'https://via.placeholder.com/150'
     }
   }
