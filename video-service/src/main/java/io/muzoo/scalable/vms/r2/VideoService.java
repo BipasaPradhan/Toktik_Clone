@@ -4,14 +4,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.muzoo.scalable.vms.Video;
 import io.muzoo.scalable.vms.VideoRepository;
 import io.muzoo.scalable.vms.VideoStatus;
+import io.muzoo.scalable.vms.VideoDetailsResponseDTO;
 import io.muzoo.scalable.vms.redis.RedisPublisher;
 import jakarta.transaction.Transactional;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import redis.clients.jedis.Jedis;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
@@ -21,10 +20,8 @@ import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequ
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
 
 import java.time.Duration;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -47,28 +44,6 @@ public class VideoService {
         public PresignedUploadResponse(String presignedUrl, String objectKey) {
             this.presignedUrl = presignedUrl;
             this.objectKey = objectKey;
-        }
-    }
-
-    // DTO for video details response
-    @Getter
-    public static class VideoDetailsResponse {
-        private final String hlsUrl;
-        private final String thumbnailUrl;
-        private final String convertedUrl;
-        private final String title;
-        private final String description;
-        private final String userId;
-        private final Double duration;
-
-        public VideoDetailsResponse(String hlsUrl, String thumbnailUrl, String convertedUrl, String title, String description, String userId, Double duration) {
-            this.hlsUrl = hlsUrl;
-            this.thumbnailUrl = thumbnailUrl;
-            this.convertedUrl = convertedUrl;
-            this.title = title;
-            this.description = description;
-            this.userId = userId;
-            this.duration = duration;
         }
     }
 
@@ -163,7 +138,7 @@ public class VideoService {
         return videoRepository.findByVisibilityAndStatus("Public", size, offset);
     }
 
-    public VideoDetailsResponse getVideoDetails(Long videoId, String userId) {
+    public VideoDetailsResponseDTO getVideoDetails(Long videoId, String userId) {
         Video video = videoRepository.findById(videoId)
                 .orElseThrow(() -> new IllegalArgumentException("Video not found with ID: " + videoId));
 
@@ -176,7 +151,15 @@ public class VideoService {
         String thumbnailUrl = generatePresignedDownloadUrl(video.getThumbnailUrl());
         String convertedUrl = video.getChunkedUrl() != null ? generatePresignedDownloadUrl(video.getChunkedUrl()) : null;
 
-        return new VideoDetailsResponse(hlsUrl, thumbnailUrl, convertedUrl, video.getTitle(), video.getDescription(), video.getUserId(), video.getDuration());
+        return VideoDetailsResponseDTO.builder()
+                .hlsUrl(hlsUrl)
+                .thumbnailUrl(thumbnailUrl)
+                .convertedUrl(convertedUrl)
+                .title(video.getTitle())
+                .description(video.getDescription())
+                .userId(video.getUserId())
+                .duration(video.getDuration())
+                .build();
     }
 
     public List<Video> getMyVideos(int page, int size, String userId) {

@@ -1,7 +1,7 @@
 package io.muzoo.scalable.vms.r2;
 
 import io.muzoo.scalable.vms.Video;
-import io.muzoo.scalable.vms.r2.VideoService;
+import io.muzoo.scalable.vms.VideoDetailsResponseDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -112,10 +112,10 @@ public class VideoController {
     }
 
     @GetMapping("/details")
-    public ResponseEntity<VideoService.VideoDetailsResponse> getVideoDetails(
+    public ResponseEntity<VideoDetailsResponseDTO> getVideoDetails(
             @RequestParam("videoId") Long videoId,
             @RequestParam("userId") String userId) {
-        VideoService.VideoDetailsResponse videoDetails = videoService.getVideoDetails(videoId, userId);
+        VideoDetailsResponseDTO videoDetails = videoService.getVideoDetails(videoId, userId);
         return ResponseEntity.ok(videoDetails);
     }
 
