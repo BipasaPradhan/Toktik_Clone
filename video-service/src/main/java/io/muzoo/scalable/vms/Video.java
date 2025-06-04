@@ -13,40 +13,41 @@ import java.time.ZoneId;
 public class Video {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
     private Long id;
 
-    @Column(nullable = false)
+    @Column(nullable = false, name = "title")
     private String title;
 
-    @Column(nullable = false)
+    @Column(nullable = false, name = "description")
     private String description;
 
-    @Column(nullable = false)
+    @Column(nullable = false, name = "user_id")
     private String userId;
 
-    @Column(nullable = false)
+    @Column(nullable = false, name = "visibility")
     private String visibility;
 
-    @Column(nullable = false, updatable = false)
+    @Column(nullable = false, updatable = false, name = "upload_time")
     private LocalDateTime uploadTime;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, name = "status")
     private VideoStatus status;
 
-    @Column(nullable = false)
+    @Column(nullable = false, name = "object_key")
     private String objectKey;
 
-    @Column
+    @Column(name = "hls_playlist_url")
     private String hlsPlaylistUrl;
 
-    @Column
+    @Column(name = "thumbnail_url")
     private String thumbnailUrl;
 
-    @Column
+    @Column(name = "chunked_url")
     private String chunkedUrl;
 
-    @Column
+    @Column(name = "duration")
     private Double duration;
 
     public Video(String userId, String title, String description, String objectKey, VideoStatus status, String visibility) {

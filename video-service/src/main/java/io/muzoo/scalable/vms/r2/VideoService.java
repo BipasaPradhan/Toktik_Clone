@@ -48,9 +48,8 @@ public class VideoService {
     }
 
     public PresignedUploadResponse generatePresignedUploadUrl(String videoFileName, String userId) {
-        // Ensure videoFileName is used as the base name, appending timestamp
         String timestamp = String.valueOf(System.currentTimeMillis());
-        String uniqueFileName = videoFileName.replace(".mp4", "_" + timestamp + ".mp4"); // e.g., video_1234567890.mp4
+        String uniqueFileName = videoFileName.replace(".mp4", "_" + timestamp + ".mp4");
         String baseKey = userId + "/output/" + uniqueFileName;
         PutObjectRequest putObjectRequest = PutObjectRequest.builder()
                 .bucket(bucketName)
@@ -64,18 +63,15 @@ public class VideoService {
         return new PresignedUploadResponse(presignedRequest.url().toString(), baseKey);
     }
 
-    // Presigned URL for downloading (GET)
     public String generatePresignedDownloadUrl(String objectKey) {
         GetObjectRequest getObjectRequest = GetObjectRequest.builder()
                 .bucket(bucketName)
                 .key(objectKey)
                 .build();
-
         GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
-                .signatureDuration(Duration.ofHours(24)) // Increased to 24 hours
+                .signatureDuration(Duration.ofHours(24))
                 .getObjectRequest(getObjectRequest)
                 .build();
-
         PresignedGetObjectRequest presignedRequest = s3Presigner.presignGetObject(presignRequest);
         return presignedRequest.url().toString();
     }
@@ -93,24 +89,16 @@ public class VideoService {
             throw new RuntimeException("Error checking object in R2: " + e.getMessage(), e);
         }
 
-        VideoStatus status = VideoStatus.PROCESSING; //processing once uploaded whole OG file to r2
+        VideoStatus status = VideoStatus.PROCESSING;
         Video video = new Video(userId, title, description, objectKey, status, visibility);
         Video savedVideo = videoRepository.save(video);
-
-        // Publish to Redis Pub/Sub
-        String videoId = savedVideo.getId().toString(); // Use database ID
-        Map<String, String> message = Map.of(
-                "video_id", videoId,
-                "s3_key", objectKey,
-                "user_id", userId
-        );
+        String videoId = savedVideo.getId().toString();
+        Map<String, String> message = Map.of("video_id", videoId, "s3_key", objectKey, "user_id", userId);
         System.out.println("Publishing to video:process channel: video_id=" + videoId + ", s3_key=" + objectKey);
         redisPublisher.publish("video:process", message);
-
         return savedVideo;
     }
 
-    // Update metadata after workers
     @Transactional
     public Video updateVideoMetadata(Long videoId, String hlsPlaylistUrl, String thumbnailUrl, String convertedUrl, Double duration) {
         System.out.println("Updating metadata for videoId: " + videoId + ", hlsPlaylistUrl: " + hlsPlaylistUrl +
@@ -123,7 +111,7 @@ public class VideoService {
         video.setHlsPlaylistUrl(hlsPlaylistUrl);
         video.setThumbnailUrl(thumbnailUrl);
         video.setChunkedUrl(convertedUrl);
-        video.setDuration(duration); // if duration is there
+        video.setDuration(duration);
         video.setStatus(VideoStatus.UPLOADED);
         Video updatedVideo = videoRepository.save(video);
         System.out.println("Updated video metadata for ID: " + videoId + ", status: " + VideoStatus.UPLOADED);
@@ -138,15 +126,20 @@ public class VideoService {
         return videoRepository.findByVisibilityAndStatus("Public", size, offset);
     }
 
+    @Transactional
     public VideoDetailsResponseDTO getVideoDetails(Long videoId, String userId) {
-        Video video = videoRepository.findById(videoId)
-                .orElseThrow(() -> new IllegalArgumentException("Video not found with ID: " + videoId));
+        System.out.println("Attempting to fetch video with ID: " + videoId);
+        Video video = videoRepository.findByIdNative(videoId)
+                .orElseThrow(() -> {
+                    System.out.println("Database query for videoId=" + videoId + " returned no result");
+                    return new IllegalArgumentException("Video not found with ID: " + videoId);
+                });
+        System.out.println("Found video: id=" + video.getId() + ", title=" + video.getTitle() + ", visibility=" + video.getVisibility());
 
         if (!"Public".equals(video.getVisibility()) && !video.getUserId().equals(userId)) {
             throw new SecurityException("Access denied: Video is private or not owned by the user");
         }
 
-        // Generate presigned URLs
         String hlsUrl = generatePresignedDownloadUrl(video.getHlsPlaylistUrl());
         String thumbnailUrl = generatePresignedDownloadUrl(video.getThumbnailUrl());
         String convertedUrl = video.getChunkedUrl() != null ? generatePresignedDownloadUrl(video.getChunkedUrl()) : null;

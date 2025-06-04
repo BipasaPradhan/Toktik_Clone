@@ -115,8 +115,21 @@ public class VideoController {
     public ResponseEntity<VideoDetailsResponseDTO> getVideoDetails(
             @RequestParam("videoId") Long videoId,
             @RequestParam("userId") String userId) {
-        VideoDetailsResponseDTO videoDetails = videoService.getVideoDetails(videoId, userId);
-        return ResponseEntity.ok(videoDetails);
+        System.out.println("Received request for /api/videos/details with videoId=" + videoId + ", userId=" + userId);
+        try {
+            VideoDetailsResponseDTO videoDetails = videoService.getVideoDetails(videoId, userId);
+            System.out.println("Successfully fetched video details for videoId=" + videoId);
+            return ResponseEntity.ok(videoDetails);
+        } catch (IllegalArgumentException e) {
+            System.out.println("Caught IllegalArgumentException: " + e.getMessage());
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage(), e);
+        } catch (SecurityException e) {
+            System.out.println("Caught SecurityException: " + e.getMessage());
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, e.getMessage(), e);
+        } catch (Exception e) {
+            System.out.println("Caught unexpected exception: " + e.getMessage());
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Internal server error", e);
+        }
     }
 
     @PutMapping("/{id}")

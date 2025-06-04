@@ -24,5 +24,6 @@ declare module 'vue-router/auto-routes' {
     '/manage': RouteRecordInfo<'/manage', '/manage', Record<never, never>, Record<never, never>>,
     '/register': RouteRecordInfo<'/register', '/register', Record<never, never>, Record<never, never>>,
     '/upload': RouteRecordInfo<'/upload', '/upload', Record<never, never>, Record<never, never>>,
+    '/watch/[id]': RouteRecordInfo<'/watch/[id]', '/watch/:id', { id: ParamValue<true> }, { id: ParamValue<false> }>,
   }
 }
