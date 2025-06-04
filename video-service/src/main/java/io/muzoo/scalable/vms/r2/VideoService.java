@@ -31,6 +31,7 @@ import java.util.Optional;
 public class VideoService {
     private final S3Presigner s3Presigner;
     private final S3Client s3Client;
+    @Getter
     private final VideoRepository videoRepository;
     private final RedisPublisher redisPublisher;
 
@@ -176,5 +177,13 @@ public class VideoService {
         String convertedUrl = video.getChunkedUrl() != null ? generatePresignedDownloadUrl(video.getChunkedUrl()) : null;
 
         return new VideoDetailsResponse(hlsUrl, thumbnailUrl, convertedUrl, video.getTitle(), video.getDescription(), video.getUserId(), video.getDuration());
+    }
+
+    public List<Video> getMyVideos(int page, int size, String userId) {
+        if (page < 1 || size < 1) {
+            throw new IllegalArgumentException("Page and size must be positive integers");
+        }
+        int offset = (page - 1) * size;
+        return videoRepository.findByUserIdAndStatus(userId, size, offset);
     }
 }

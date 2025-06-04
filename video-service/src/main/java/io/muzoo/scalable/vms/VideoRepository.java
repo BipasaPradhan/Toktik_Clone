@@ -13,4 +13,7 @@ public interface VideoRepository extends JpaRepository<Video, Long> {
 
     @Query(value = "SELECT * FROM vms_video_data WHERE visibility = :visibility AND status = 'UPLOADED' ORDER BY upload_time DESC LIMIT :limit OFFSET :offset", nativeQuery = true)
     List<Video> findByVisibilityAndStatus(String visibility, int limit, int offset);
+
+    @Query(value = "SELECT * FROM vms_video_data WHERE user_id = :userId AND status = 'UPLOADED' ORDER BY upload_time DESC LIMIT :limit OFFSET :offset", nativeQuery = true)
+    List<Video> findByUserIdAndStatus(String userId, int limit, int offset);
 }
