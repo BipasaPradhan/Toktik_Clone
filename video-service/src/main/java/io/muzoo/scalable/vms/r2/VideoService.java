@@ -128,13 +128,14 @@ public class VideoService {
 
     @Transactional
     public VideoDetailsResponseDTO getVideoDetails(Long videoId, String userId) {
-        System.out.println("Attempting to fetch video with ID: " + videoId);
+        System.out.println("Attempting to fetch video with ID: " + videoId + " for userId: " + userId);
         Video video = videoRepository.findByIdNative(videoId)
                 .orElseThrow(() -> {
                     System.out.println("Database query for videoId=" + videoId + " returned no result");
                     return new IllegalArgumentException("Video not found with ID: " + videoId);
                 });
-        System.out.println("Found video: id=" + video.getId() + ", title=" + video.getTitle() + ", visibility=" + video.getVisibility());
+        System.out.println("Found video: id=" + video.getId() + ", title=" + video.getTitle() + ", visibility=" + video.getVisibility() +
+                ", hlsPlaylistUrl=" + video.getHlsPlaylistUrl() + ", thumbnailUrl=" + video.getThumbnailUrl());
 
         if (!"Public".equals(video.getVisibility()) && !video.getUserId().equals(userId)) {
             throw new SecurityException("Access denied: Video is private or not owned by the user");
@@ -143,6 +144,9 @@ public class VideoService {
         String hlsUrl = generatePresignedDownloadUrl(video.getHlsPlaylistUrl());
         String thumbnailUrl = generatePresignedDownloadUrl(video.getThumbnailUrl());
         String convertedUrl = video.getChunkedUrl() != null ? generatePresignedDownloadUrl(video.getChunkedUrl()) : null;
+
+        System.out.println("Generated hlsUrl: " + hlsUrl);
+        System.out.println("Generated thumbnailUrl: " + thumbnailUrl);
 
         return VideoDetailsResponseDTO.builder()
                 .hlsUrl(hlsUrl)
