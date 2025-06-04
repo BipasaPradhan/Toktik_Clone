@@ -159,7 +159,7 @@ public class VideoService {
             throw new IllegalArgumentException("Page and size must be positive integers");
         }
         int offset = (page - 1) * size;
-        return videoRepository.findByVisibilityAndStatus("Public", VideoStatus.UPLOADED, size, offset);
+        return videoRepository.findByVisibilityAndStatus("Public", size, offset);
     }
 
     public VideoDetailsResponse getVideoDetails(Long videoId, String userId) {
