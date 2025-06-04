@@ -14,4 +14,5 @@ public class VideoDetailsResponseDTO {
     private final String description;
     private final String userId;
     private final Double duration;
+    private final String uploadTime;
 }
