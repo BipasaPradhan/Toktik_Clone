@@ -32,5 +32,5 @@ jobs:
 
       - name: Build and Push Frontend
         run: |
-          docker build -t ghcr.io/bipasapradhan/ums-frontend:latest -f frontend/Dockerfile frontend/
-          docker push ghcr.io/bipasapradhan/ums-frontend:latest
+          docker build -t ghcr.io/bipasapradhan/frontend-toctik:latest -f frontend/Dockerfile frontend/
+          docker push ghcr.io/bipasapradhan/frontend-toctik:latest
