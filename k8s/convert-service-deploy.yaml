@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: convert-worker
+  labels:
+    app: convert-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: convert-worker
+  template:
+    metadata:
+      labels:
+        app: convert-worker
+    spec:
+      containers:
+        - name: convert-worker
+          image: yourregistry/convert-worker:latest  # Replace with your image name
+          command: ["celery", "-A", "app.convert", "worker", "--pool=solo", "--loglevel=INFO", "-E", "-Q", "convert_queue"]
+          env:
+            - name: S3_ENDPOINT_URL
+              valueFrom:
+                secretKeyRef:
+                  name: s3-secret      # Create a Kubernetes Secret with your values
+                  key: endpoint_url
+            - name: S3_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: s3-secret
+                  key: access_key
+            - name: S3_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: s3-secret
+                  key: secret_key
+            - name: S3_REGION
+              valueFrom:
+                secretKeyRef:
+                  name: s3-secret
+                  key: region
+            - name: S3_BUCKET
+              value: "your-bucket-name"  # You can hardcode or also use secrets
+            - name: CELERY_BROKER_URL
+              valueFrom:
+                secretKeyRef:
+                  name: celery-secret
+                  key: broker_url
+            - name: CELERY_RESULT_BACKEND
+              valueFrom:
+                secretKeyRef:
+                  name: celery-secret
+                  key: result_backend
+            - name: TZ
+              value: "Asia/Bangkok"
+          # Add readiness/liveness probes if needed
