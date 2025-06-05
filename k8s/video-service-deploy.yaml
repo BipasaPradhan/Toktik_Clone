@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: video-service
+  labels:
+    app: video-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: video-service
+  template:
+    metadata:
+      labels:
+        app: video-service
+    spec:
+      imagePullSecrets:
+        - name: ghcr-secret
+      containers:
+        - name: backend-video-service
+          image: ghcr.io/bipasapradhan/video-service:latest
+          ports:
+            - containerPort: 8081
+          env:
+            - name: UMS_DB_IP
+              value: "maria-db"
+            - name: UMS_DB_PORT
+              value: "3306"
+            - name: UMS_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mariadb-secret
+                  key: UMS_DB_PASSWORD
+            - name: UMS_DB_NAME
+              value: "toctik"
+            - name: UMS_DB_USERNAME
+              value: "dev"
+            - name: SPRING_DATA_REDIS_HOST
+              value: "redis"
+            - name: SPRING_DATA_REDIS_PORT
+              value: "6379"
+
+            - name: CLOUDFLARE_R2_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: r2-secret
+                  key: CLOUDFLARE_R2_ENDPOINT
+
+            - name: CLOUDFLARE_R2_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: r2-secret
+                  key: CLOUDFLARE_R2_ACCESS_KEY
+
+            - name: CLOUDFLARE_R2_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: r2-secret
+                  key: CLOUDFLARE_R2_SECRET_KEY
+            - name: CLOUDFLARE_R2_BUCKET_NAME
+              value: "toktikp2"
+
+          readinessProbe:
+            tcpSocket:
+              port: 8081
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 3
+            successThreshold: 1

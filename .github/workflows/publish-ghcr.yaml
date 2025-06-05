@@ -34,3 +34,8 @@ jobs:
         run: |
           docker build -t ghcr.io/bipasapradhan/frontend-toctik:latest -f frontend/Dockerfile frontend/
           docker push ghcr.io/bipasapradhan/frontend-toctik:latest
+
+      - name: Build and Push Video Service
+        run: |
+          docker build -t ghcr.io/bipasapradhan/video-service:latest -f video-service/Dockerfile video-service/
+          docker push ghcr.io/bipasapradhan/video-service:latest
