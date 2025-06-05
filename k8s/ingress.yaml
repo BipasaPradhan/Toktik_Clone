@@ -1,7 +1,7 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: ums-ingress
+  name: vms-ingress
   annotations:
     traefik.ingress.kubernetes.io/router.entrypoints: web
 spec:
@@ -13,13 +13,13 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: ums-frontend
+                name: frontend
                 port:
                   number: 80
           - path: /api
             pathType: Prefix
             backend:
               service:
-                name: ums-backend
+                name: user-authentication-service
                 port:
                   number: 80

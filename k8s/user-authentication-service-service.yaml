@@ -1,10 +1,10 @@
 kind: Service
 apiVersion: v1
 metadata:
-  name: ums-backend
+  name: user-authentication-service
 spec:
   selector:
-    app: ums-backend
+    app: user-authentication-service
   type: ClusterIP
   ports:
     - name: http
