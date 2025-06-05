@@ -11,6 +11,7 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
@@ -19,9 +20,12 @@ import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequ
 import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -125,7 +129,6 @@ public class VideoService {
         int offset = (page - 1) * size;
         return videoRepository.findByVisibilityAndStatus("Public", size, offset);
     }
-
     @Transactional
     public VideoDetailsResponseDTO getVideoDetails(Long videoId, String userId) {
         System.out.println("Attempting to fetch video with ID: " + videoId + " for userId: " + userId);
@@ -134,22 +137,25 @@ public class VideoService {
                     System.out.println("Database query for videoId=" + videoId + " returned no result");
                     return new IllegalArgumentException("Video not found with ID: " + videoId);
                 });
-        System.out.println("Found video: id=" + video.getId() + ", title=" + video.getTitle() + ", visibility=" + video.getVisibility() +
-                ", hlsPlaylistUrl=" + video.getHlsPlaylistUrl() + ", thumbnailUrl=" + video.getThumbnailUrl());
+        System.out.println("Found video: id=" + video.getId() + ", title=" + video.getTitle() +
+                ", visibility=" + video.getVisibility() + ", hlsPlaylistUrl=" + video.getHlsPlaylistUrl() +
+                ", thumbnailUrl=" + video.getThumbnailUrl());
 
         if (!"Public".equals(video.getVisibility()) && !video.getUserId().equals(userId)) {
             throw new SecurityException("Access denied: Video is private or not owned by the user");
         }
 
-        String hlsUrl = generatePresignedDownloadUrl(video.getHlsPlaylistUrl());
+        String hlsPlaylistContent = getRewrittenHlsPlaylist(video.getHlsPlaylistUrl());
         String thumbnailUrl = generatePresignedDownloadUrl(video.getThumbnailUrl());
         String convertedUrl = video.getChunkedUrl() != null ? generatePresignedDownloadUrl(video.getChunkedUrl()) : null;
 
-        System.out.println("Generated hlsUrl: " + hlsUrl);
+        System.out.println("Generated hlsPlaylistContent (first 100 chars): " +
+                hlsPlaylistContent.substring(0, Math.min(100, hlsPlaylistContent.length())));
         System.out.println("Generated thumbnailUrl: " + thumbnailUrl);
 
-        return VideoDetailsResponseDTO.builder()
-                .hlsUrl(hlsUrl)
+        VideoDetailsResponseDTO responseDTO = VideoDetailsResponseDTO.builder()
+                .hlsUrl(hlsPlaylistContent)
+                .hlsKey(video.getHlsPlaylistUrl())
                 .thumbnailUrl(thumbnailUrl)
                 .convertedUrl(convertedUrl)
                 .title(video.getTitle())
@@ -158,6 +164,47 @@ public class VideoService {
                 .duration(video.getDuration())
                 .uploadTime(video.getUploadTime() != null ? video.getUploadTime().toString() : null)
                 .build();
+
+        System.out.println("Returning DTO with hlsKey: " + responseDTO.getHlsKey());
+        return responseDTO;
+    }
+
+    private String getRewrittenHlsPlaylist(String hlsPlaylistKey) {
+        try {
+            // Fetch .m3u8 file from R2
+            GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(hlsPlaylistKey)
+                    .build();
+            try (ResponseInputStream<GetObjectResponse> response = s3Client.getObject(getObjectRequest);
+                 BufferedReader reader = new BufferedReader(new InputStreamReader(response))) {
+                String playlistContent = reader.lines().collect(Collectors.joining("\n"));
+
+                // Rewrite .ts segment URLs
+                String basePath = hlsPlaylistKey.substring(0, hlsPlaylistKey.lastIndexOf('/') + 1); // e.g., userId/output/video_id/
+                StringBuilder rewrittenPlaylist = new StringBuilder();
+                for (String line : playlistContent.split("\n")) {
+                    if (line.endsWith(".ts")) {
+                        String segmentKey = basePath + line;
+                        String presignedSegmentUrl = generatePresignedDownloadUrl(segmentKey);
+                        rewrittenPlaylist.append(presignedSegmentUrl).append("\n");
+                        System.out.println("Rewrote segment URL: " + line + " -> " + presignedSegmentUrl);
+                    } else {
+                        rewrittenPlaylist.append(line).append("\n");
+                    }
+                }
+                return rewrittenPlaylist.toString();
+            }
+        } catch (NoSuchKeyException e) {
+            System.out.println("HLS playlist not found: " + hlsPlaylistKey);
+            throw new IllegalArgumentException("HLS playlist not found: " + hlsPlaylistKey);
+        } catch (S3Exception e) {
+            System.out.println("Error fetching HLS playlist: " + e.getMessage());
+            throw new RuntimeException("Error fetching HLS playlist: " + e.getMessage(), e);
+        } catch (Exception e) {
+            System.out.println("Unexpected error reading HLS playlist: " + e.getMessage());
+            throw new RuntimeException("Unexpected error: " + e.getMessage(), e);
+        }
     }
 
     public List<Video> getMyVideos(int page, int size, String userId) {
