@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: thumbnail-worker
+  labels:
+    app: thumbnail-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: thumbnail-worker
+  template:
+    metadata:
+      labels:
+        app: thumbnail-worker
+    spec:
+      imagePullSecrets:
+        - name: ghcr-secret
+      containers:
+        - name: thumbnail-worker
+          image: ghcr.io/bipasapradhan/thumbnail-service:latest
+          env:
+            - name: S3_ENDPOINT_URL
+              valueFrom:
+                secretKeyRef:
+                  name: r2-secret
+                  key: CLOUDFLARE_R2_ENDPOINT
+            - name: S3_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: r2-secret
+                  key: CLOUDFLARE_R2_ACCESS_KEY
+            - name: S3_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: r2-secret
+                  key: CLOUDFLARE_R2_SECRET_KEY
+            - name: S3_REGION
+              value: "auto"
+            - name: S3_BUCKET
+              value: "toktikp2"
+            - name: CELERY_BROKER_URL
+              valueFrom:
+                secretKeyRef:
+                  name: celery-secret
+                  key: CELERY_BROKER_URL
+            - name: CELERY_RESULT_BACKEND
+              valueFrom:
+                secretKeyRef:
+                  name: celery-secret
+                  key: CELERY_RESULT_BACKEND

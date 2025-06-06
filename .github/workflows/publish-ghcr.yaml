@@ -49,3 +49,8 @@ jobs:
         run: |
           docker build -t ghcr.io/bipasapradhan/chunking-service:latest -f chunking_service/Dockerfile_chunking chunking_service/
           docker push ghcr.io/bipasapradhan/chunking-service:latest
+
+      - name: Build and Push Thumbnail Service
+        run: |
+          docker build -t ghcr.io/bipasapradhan/thumbnail-service:latest -f thumbnail_service/Dockerfile_thumbnail thumbnail_service/
+          docker push ghcr.io/bipasapradhan/thumbnail-service:latest
