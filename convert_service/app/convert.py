@@ -8,14 +8,18 @@ app = Celery('convert', broker='redis://redis:6379/0', backend='redis://redis:63
 s3_client = S3Client()
 
 @app.task(name='convert.convert_video')
-def convert_video(video_id, s3_key, output_path, user_id):
-    # Download the video from S3
-    input_path = f"/app/uploads/{video_id}.mp4"
-    os.makedirs(os.path.dirname(input_path), exist_ok=True)
-    s3_client.download_file(s3_key, input_path)
+def convert_video(video_id, s3_key, converted_key, user_id):
+    # temporary local paths within the pod's ephemeral storage
+    input_path = f"/tmp/{video_id}_input.mp4"
+    output_path = f"/tmp/{video_id}_converted.mp4"
 
-    # Ensure output directory exists
+    # Ensure temporary directories exist
+    os.makedirs(os.path.dirname(input_path), exist_ok=True)
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+    # Download the video from R2
+    print(f"Downloading video from R2: {s3_key}")
+    s3_client.download_file(s3_key, input_path)
 
     # Convert the video
     try:
@@ -26,19 +30,23 @@ def convert_video(video_id, s3_key, output_path, user_id):
         error_msg = e.stderr.decode() if e.stderr else "No stderr output from FFmpeg"
         raise Exception(f"FFmpeg error during conversion: {error_msg}")
 
-    # Upload the converted video to S3
-    s3_key = f"{user_id}/output/{video_id}/converted.mp4"
-    s3_client.upload_file(output_path, s3_key)
-    # Cleanup
-    if os.path.exists(input_path):
-        os.remove(input_path)
-    if os.path.exists(output_path):
-        os.remove(output_path)
+    # Upload the converted video to R2
+    print(f"Uploading converted video to R2: {converted_key}")
+    s3_client.upload_file(output_path, converted_key)
 
-    # Remove the empty output directory
-    output_dir = os.path.dirname(output_path)
-    if os.path.exists(output_dir) and not os.listdir(output_dir):
-        shutil.rmtree(output_dir)
-        print(f"Removed empty output directory {output_dir}")
+    # Cleanup temporary files
+    for file_path in [input_path, output_path]:
+        if os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+                print(f"Removed temporary file: {file_path}")
+            except Exception as e:
+                print(f"Failed to remove temporary file {file_path}: {e}")
 
-    return output_path
+    # Remove the temporary directory if empty
+    temp_dir = os.path.dirname(input_path)
+    if os.path.exists(temp_dir) and not os.listdir(temp_dir):
+        shutil.rmtree(temp_dir)
+        print(f"Removed empty temporary directory: {temp_dir}")
+
+    return converted_key  # Return the R2 key for the converted video
