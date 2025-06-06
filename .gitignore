@@ -18,4 +18,5 @@ dependency-reduced-pom.xml
 .mvn/
 gradle/
 README.html
+p2Token.txt
 node_modules

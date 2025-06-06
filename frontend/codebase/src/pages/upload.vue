@@ -110,7 +110,7 @@
     const userId = authStore.getUsername || 'default-user';
     console.log('Requesting presigned URL for userId:', userId, 'filename:', filename);
     const res = await fetch(
-      `/videos/presign-upload?videoFileName=${encodeURIComponent(filename)}&userId=${encodeURIComponent(userId)}`,
+      `/api/videos/presign-upload?videoFileName=${encodeURIComponent(filename)}&userId=${encodeURIComponent(userId)}`,
       { credentials: 'include' } // Maintain session for auth service communication
     );
     if (!res.ok) {
@@ -154,7 +154,7 @@
       userId,
     }).toString();
     const res = await fetch(
-      `/videos/metadata?${params}`,
+      `/api/videos/metadata?${params}`,
       {
         method: 'POST',
         credentials: 'include',

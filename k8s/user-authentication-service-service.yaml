@@ -1,10 +1,10 @@
 kind: Service
 apiVersion: v1
 metadata:
-  name: frontend
+  name: user-authentication-service
 spec:
   selector:
-    app: frontend
+    app: user-authentication-service
   type: ClusterIP
   ports:
     - name: http

@@ -1,0 +1,46 @@
+name: Docker Image CI for GHCR
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GH_PAT }}
+
+      - name: Build and Push User Authentication Service
+        run: |
+          docker build -t ghcr.io/bipasapradhan/user-authentication-service:latest -f user-authentication-service/Dockerfile user-authentication-service/
+          docker push ghcr.io/bipasapradhan/user-authentication-service:latest
+
+      - name: Build and Push Frontend
+        run: |
+          docker build -t ghcr.io/bipasapradhan/frontend-toctik:latest -f frontend/Dockerfile frontend/
+          docker push ghcr.io/bipasapradhan/frontend-toctik:latest
+
+      - name: Build and Push Video Service
+        run: |
+          docker build -t ghcr.io/bipasapradhan/video-service:latest -f video-service/Dockerfile video-service/
+          docker push ghcr.io/bipasapradhan/video-service:latest
+
+      - name: Build and Push Convert Service
+        run : |
+          docker build -t ghcr.io/bipasapradhan/convert-service:latest -f convert_service/Dockerfile_convert convert_service/
+          docker push ghcr.io/bipasapradhan/convert-service:latest

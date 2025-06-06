@@ -1,12 +1,12 @@
 kind: Service
 apiVersion: v1
 metadata:
-  name: ums-backend
+  name: video-service 
 spec:
   selector:
-    app: ums-backend
+    app: video-service
   type: ClusterIP
   ports:
     - name: http
       port: 80
-      targetPort: 8080
+      targetPort: 8081

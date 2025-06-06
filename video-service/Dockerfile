@@ -18,10 +18,8 @@ FROM eclipse-temurin:21-jre
 
 # Copy jar file 
 COPY --from=builder /app/target/*.jar app.jar
-
-# Wait for MariaDB to be ready before starting the app
 ADD https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for-it.sh /wait-for-it.sh
 RUN chmod +x /wait-for-it.sh
 
-EXPOSE 8080
+EXPOSE 8081
 ENTRYPOINT ["./wait-for-it.sh", "maria-db:3306", "--", "java", "-jar", "/app.jar"]

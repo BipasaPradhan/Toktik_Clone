@@ -91,8 +91,8 @@
   const fetchVideos = async () => {
     try {
       loading.value = true
-      console.log('Fetching videos from:', `/videos/feed?page=${page.value}&size=20`)
-      const response = await axios.get(`/videos/feed`, {
+      console.log('Fetching videos from:', `/api/videos/feed?page=${page.value}&size=20`)
+      const response = await axios.get(`/api/videos/feed`, {
         params: { page: page.value, size: 20 },
       })
       console.log('Full API Response:', JSON.stringify(response.data, null, 2))
@@ -114,7 +114,7 @@
     try {
       const userId = authStore.username || ''
       console.log(`Fetching thumbnail for videoId ${videoId}, userId ${userId}`)
-      const response = await axios.get(`/videos/details`, {
+      const response = await axios.get(`/api/videos/details`, {
         params: { videoId, userId },
       })
       console.log('Thumbnail Response:', JSON.stringify(response.data, null, 2))
