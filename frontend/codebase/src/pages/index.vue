@@ -66,7 +66,6 @@
   import { useRouter } from 'vue-router'
   import { onMounted, ref } from 'vue'
   import axios, { AxiosError } from 'axios'
-  import { Client } from '@stomp/stompjs';
 
   const authStore = useAuthStore()
   const router = useRouter()
@@ -85,7 +84,6 @@
   const loading = ref(true)
   const page = ref(1)
   const thumbnailUrls = ref<Record<number, string>>({})
-  let stompClient: Client | null = null;
 
   // Fetch videos from the backend
   const fetchVideos = async () => {
@@ -156,33 +154,9 @@
     fetchVideos()
   }
 
-  const connect = () => {
-    stompClient = new Client({
-      brokerURL: 'ws://localhost:8003/ws',
-      debug: str => console.log('STOMP Debug:', str),
-      reconnectDelay: 5000,
-      heartbeatIncoming: 4000,
-      heartbeatOutgoing: 4000,
-    });
-
-    stompClient.onConnect = () => {
-      console.log('Connected to WebSocket');
-      stompClient?.subscribe('/topic/video-updates', (message) => {
-        console.log('Update received:', message.body);
-        fetchVideos(); // Refresh feed on update
-      });
-    };
-
-    stompClient.onStompError = (frame) => console.error('STOMP Error:', frame);
-    stompClient.onWebSocketError = (error) => console.error('WebSocket Error:', error);
-
-    stompClient.activate();
-  };
-
   // Fetch videos on mount
   onMounted(() => {
-    fetchVideos();
-    connect();
+    fetchVideos()
   })
 </script>
 
