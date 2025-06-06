@@ -50,7 +50,7 @@ spec:
                   name: celery-secret
                   key: CELERY_RESULT_BACKEND
             - name: TZ
-              value: "Asia/Bangkok"
+              value: "UTC"
           volumeMounts:
             - name: counter-volume
               mountPath: /app/counter

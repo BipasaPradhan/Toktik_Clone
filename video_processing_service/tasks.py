@@ -19,6 +19,7 @@ def process_video_task(video_id, s3_key, user_id):
 
     # Download from S3
     local_path = f"/app/uploads/{video_id}.mp4"
+    os.makedirs("/app/uploads", exist_ok=True)
     s3_client.download_file(s3_key, local_path)
     print(f"Downloaded video to {local_path}")
 

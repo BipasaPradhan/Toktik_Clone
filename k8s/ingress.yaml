@@ -30,14 +30,14 @@ spec:
                 name: user-authentication-service
                 port:
                   number: 80
-          - path: /api/process-video
+          - path: /process-video
             pathType: Prefix
             backend:
               service:
                 name: video-processing-service
                 port:
                   number: 80
-          - path: /api/reset-counter
+          - path: /reset-counter
             pathType: Prefix
             backend:
               service:
