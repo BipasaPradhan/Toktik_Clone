@@ -41,6 +41,11 @@ jobs:
           docker push ghcr.io/bipasapradhan/video-service:latest
 
       - name: Build and Push Convert Service
-        run : |
+        run: |
           docker build -t ghcr.io/bipasapradhan/convert-service:latest -f convert_service/Dockerfile_convert convert_service/
           docker push ghcr.io/bipasapradhan/convert-service:latest
+
+      - name: Build and Push Chunking Service
+        run: |
+          docker build -t ghcr.io/bipasapradhan/chunking-service:latest -f chunking_service/Dockerfile_chunking chunking_service/
+          docker push ghcr.io/bipasapradhan/chunking-service:latest

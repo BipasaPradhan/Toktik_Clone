@@ -20,3 +20,7 @@ gradle/
 README.html
 p2Token.txt
 node_modules
+k8s/celery-secret.yaml
+k8s/mariadb-secret.yaml
+k8s/ghcr-secret.yaml
+k8s/r2-secret.yaml

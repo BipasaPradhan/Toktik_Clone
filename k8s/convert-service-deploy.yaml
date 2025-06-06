@@ -14,43 +14,38 @@ spec:
       labels:
         app: convert-worker
     spec:
+      imagePullSecrets:
+        - name: ghcr-secret
       containers:
         - name: convert-worker
-          image: yourregistry/convert-worker:latest  # Replace with your image name
-          command: ["celery", "-A", "app.convert", "worker", "--pool=solo", "--loglevel=INFO", "-E", "-Q", "convert_queue"]
+          image: ghcr.io/bipasapradhan/convert-service:latest
           env:
             - name: S3_ENDPOINT_URL
               valueFrom:
                 secretKeyRef:
-                  name: s3-secret      # Create a Kubernetes Secret with your values
-                  key: endpoint_url
+                  name: r2-secret
+                  key: CLOUDFLARE_R2_ENDPOINT
             - name: S3_ACCESS_KEY
               valueFrom:
                 secretKeyRef:
-                  name: s3-secret
-                  key: access_key
+                  name: r2-secret
+                  key: CLOUDFLARE_R2_ACCESS_KEY
             - name: S3_SECRET_KEY
               valueFrom:
                 secretKeyRef:
-                  name: s3-secret
-                  key: secret_key
+                  name: r2-secret
+                  key: CLOUDFLARE_R2_SECRET_KEY
             - name: S3_REGION
-              valueFrom:
-                secretKeyRef:
-                  name: s3-secret
-                  key: region
+              value: "auto"
             - name: S3_BUCKET
-              value: "your-bucket-name"  # You can hardcode or also use secrets
+              value: "toktikp2"
             - name: CELERY_BROKER_URL
               valueFrom:
                 secretKeyRef:
                   name: celery-secret
-                  key: broker_url
+                  key: CELERY_BROKER_URL
             - name: CELERY_RESULT_BACKEND
               valueFrom:
                 secretKeyRef:
                   name: celery-secret
-                  key: result_backend
-            - name: TZ
-              value: "Asia/Bangkok"
-          # Add readiness/liveness probes if needed
+                  key: CELERY_RESULT_BACKEND
