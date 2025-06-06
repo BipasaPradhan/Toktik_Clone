@@ -4,6 +4,8 @@ import shutil
 import redis
 import json
 from s3_client import S3Client
+import websocket
+import time
 
 app = Celery('tasks', broker='redis://redis:6379/0', backend='redis://redis:6379/0')
 s3_client = S3Client()
@@ -13,7 +15,7 @@ redis_client = redis.Redis(host='redis', port=6379, decode_responses=True)
 def process_video_task(video_id, s3_key, user_id):
     print(f"Enqueuing process_video_task for video_id: {video_id}")
 
-    # # Extract userId from s3_key
+    # Extract userId from s3_key
     # user_id = s3_key.split('/')[0]
     print(f"Extracted userId: {user_id}")
 
@@ -76,7 +78,12 @@ def process_video_task(video_id, s3_key, user_id):
 @app.task(queue='video_processing_queue')
 def update_metadata(group_result, video_id, hls_playlist_key, thumbnail_key, converted_key):
     print(f"Updating metadata for video_id: {video_id}")
-    hls_playlist_path, thumb_path = group_result
+    try:
+        hls_playlist_path, thumb_path = group_result
+    except (TypeError, ValueError) as e:
+        print(f"Error unpacking group_result: {e}")
+        hls_playlist_path = f"/app/output/{video_id}/playlist.m3u8"
+        thumb_path = f"/app/output/{video_id}/thumb.jpg"
 
     # Upload HLS playlist and thumbnail to S3
     if os.path.exists(hls_playlist_path):
@@ -91,16 +98,35 @@ def update_metadata(group_result, video_id, hls_playlist_key, thumbnail_key, con
     else:
         print(f"Thumbnail not found: {thumb_path}")
 
-    # Publish to video:processed
-    message = {
+    # Send WebSocket message
+    ws_url = "ws://video-processing-service:80/ws"  # Use service name from docker-compose
+    ws = websocket.WebSocket()
+    try:
+        ws.connect(ws_url)
+        message = {
+            "videoId": str(video_id),
+            "hlsUrl": hls_playlist_key,
+            "thumbnailUrl": thumbnail_key,
+            "convertedUrl": converted_key,
+            "duration": None
+        }
+        ws.send(json.dumps({"type": "video/processed", "content": message}))
+        print(f"Sent WebSocket message: {message}")
+    except Exception as e:
+        print(f"WebSocket error: {e}")
+    finally:
+        ws.close()
+
+    # Publish to video:processed (keep for backward compatibility)
+    message_redis = {
         "video_id": video_id,
         "hls_playlist_url": hls_playlist_key,
         "thumbnail_url": thumbnail_key,
         "converted_url": converted_key,
-        "duration": None  # Add duration if computed (e.g., via ffmpeg.probe)
+        "duration": None
     }
-    redis_client.publish("video:processed", json.dumps(message))
-    print(f"Published to video:processed: {message}")
+    redis_client.publish("video:processed", json.dumps(message_redis))
+    print(f"Published to video:processed: {message_redis}")
 
     # Cleanup
     output_dir = os.path.dirname(hls_playlist_path)

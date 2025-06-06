@@ -18,3 +18,4 @@ dependency-reduced-pom.xml
 .mvn/
 gradle/
 README.html
+node_modules

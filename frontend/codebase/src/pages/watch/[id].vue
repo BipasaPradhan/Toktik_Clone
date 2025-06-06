@@ -52,6 +52,7 @@
   import axios, { AxiosError } from 'axios';
   import Hls from 'hls.js';
   import type { ErrorData } from 'hls.js';
+  import { Client } from '@stomp/stompjs';
 
   const route = useRoute();
   const router = useRouter();
@@ -62,6 +63,8 @@
   const videoError = ref<string>('');
   const loading = ref(true);
   let hlsInstance: Hls | null = null;
+  let stompClient: Client | null = null;
+  let videoId: string | undefined;
 
   const videoDetails = ref<{
     hlsUrl: string;
@@ -84,6 +87,42 @@
     uploadTime: '',
     duration: null,
   });
+
+  // Initialize WebSocket connection
+  const connect = () => {
+    stompClient = new Client({
+      brokerURL: 'ws://localhost:8003/ws',
+      debug: str => {
+        console.log('STOMP Debug:', str);
+      },
+      reconnectDelay: 5000,
+      heartbeatIncoming: 4000,
+      heartbeatOutgoing: 4000,
+    });
+
+    stompClient.onConnect = () => {
+      console.log('Connected to WebSocket');
+      stompClient?.subscribe('/topic/video-updates', message => {
+        console.log('Received WebSocket update:', message.body);
+        const update = JSON.parse(message.body);
+        console.log('Parsed WebSocket update:', update);
+        if (update.videoId === String(videoId)) {
+          console.log('Matching videoId, refreshing details...');
+          fetchVideoDetails(parseInt(update.videoId));
+        }
+      });
+    };
+
+    stompClient.onStompError = frame => {
+      console.error('STOMP Error:', frame);
+    };
+
+    stompClient.onWebSocketError = error => {
+      console.error('WebSocket Error:', error);
+    };
+
+    stompClient.activate();
+  };
 
   // Fetch video details and setup HLS playback
   const fetchVideoDetails = async (videoId: number, retries = 5) => {
@@ -187,8 +226,9 @@
   };
 
   onMounted(() => {
-    const videoId = (route.params as { id?: string }).id;
+    videoId = (route.params as { id: string }).id;
     if (videoId) {
+      connect(); // Start WebSocket connection
       fetchVideoDetails(parseInt(videoId));
     } else {
       loading.value = false;
@@ -207,6 +247,11 @@
     if (hlsInstance) {
       hlsInstance.destroy();
       hlsInstance = null;
+    }
+    if (stompClient) {
+      stompClient.deactivate();
+      console.log('Disconnected from WebSocket');
+      stompClient = null;
     }
   });
 
@@ -229,7 +274,6 @@
     }
   };
 </script>
-
 
 <style scoped lang="scss">
 .watch-background {
