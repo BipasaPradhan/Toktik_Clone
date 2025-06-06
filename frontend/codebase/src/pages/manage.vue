@@ -109,7 +109,7 @@
 </template>
 
 <script setup lang="ts">
-  import { onMounted, ref } from 'vue'
+  import { onMounted, onUnmounted, ref } from 'vue'
   import { useRouter } from 'vue-router'
   import { useAuthStore } from '@/stores/auth'
   import axios, { AxiosError } from 'axios'
@@ -126,6 +126,7 @@
     thumbnailUrl: string
     uploadTime: string
     userId: string
+    status: string
   }
 
   // Reactive state
@@ -134,18 +135,24 @@
   const page = ref(1)
   const editDialog = ref(false)
   const editedVideo = ref<Partial<Video>>({ id: 0, title: '', description: '', visibility: 'Public' })
+  let pollInterval: number | null = null
+  const isPolling = ref(false)
 
   // Fetch videos uploaded by the user
   const fetchMyVideos = async () => {
     try {
       loading.value = true
       const userId = authStore.username || ''
-      const response = await axios.get(`/api/videos/my`, {
+      const response = await axios.get(`/videos/my`, {
         params: { page: page.value, size: 20 },
         headers: { 'X-User-Id': userId },
       })
       console.log('My Videos Response:', JSON.stringify(response.data, null, 2))
       videos.value = response.data.videos || []
+
+      // Check if any video is in PROCESSING state
+      const hasProcessing = videos.value.some(video => video.status === 'PROCESSING')
+      updatePollingState(hasProcessing)
     } catch (error) {
       const axiosError = error as AxiosError
       console.error('Error fetching my videos:', axiosError.message, axiosError.response?.data)
@@ -169,7 +176,7 @@
   const saveEdit = async () => {
     try {
       const userId = authStore.username || ''
-      await axios.put(`/api/videos/${editedVideo.value.id}`, {
+      await axios.put(`/videos/${editedVideo.value.id}`, {
         title: editedVideo.value.title,
         description: editedVideo.value.description,
         visibility: editedVideo.value.visibility,
@@ -188,9 +195,40 @@
   const goToUpload = () => router.push('/upload')
   const goHome = () => router.push('/')
 
+  // Centralized polling state management
+  const updatePollingState = (hasProcessing: boolean) => {
+    if (hasProcessing && !isPolling.value) {
+      console.log('Starting polling for PROCESSING videos')
+      isPolling.value = true
+      pollInterval = setInterval(fetchMyVideos, 5000) // Poll every 5 seconds
+    } else if (!hasProcessing && isPolling.value) {
+      console.log('Stopping polling: No PROCESSING videos')
+      clearInterval(pollInterval!)
+      pollInterval = null
+      isPolling.value = false
+    }
+  }
+
+  // Trigger refresh after navigation (e.g., from upload)
+  const refreshMyVideos = () => {
+    page.value = 1 // Reset to first page
+    videos.value = [] // Clear current videos
+    fetchMyVideos() // Fetch fresh data
+  }
+
   // Fetch videos on mount
   onMounted(() => {
     fetchMyVideos()
+    window.addEventListener('refreshMyVideos', refreshMyVideos)
+  })
+
+  onUnmounted(() => {
+    window.removeEventListener('refreshMyVideos', refreshMyVideos)
+    if (pollInterval) {
+      clearInterval(pollInterval)
+      pollInterval = null
+      isPolling.value = false
+    }
   })
 </script>
 

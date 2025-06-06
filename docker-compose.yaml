@@ -158,7 +158,7 @@ services:
       dockerfile: Dockerfile
     image: sca2024-t3-p2-404najoenotfound-video-service
     ports:
-      - "8003:8081"
+      - "8081:8081"
     environment:
       - SPRING_DATASOURCE_URL=jdbc:mariadb://maria-db:3306/toctik
       - SPRING_DATASOURCE_USERNAME=root

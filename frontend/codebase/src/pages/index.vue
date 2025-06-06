@@ -77,6 +77,7 @@
     thumbnailUrl: string
     userId: string
     uploadTime: string
+    status: string
   }
 
   // Reactive state
@@ -84,6 +85,8 @@
   const loading = ref(true)
   const page = ref(1)
   const thumbnailUrls = ref<Record<number, string>>({})
+  let pollInterval: number | null = null
+  const isPolling = ref(false)
 
   // Fetch videos from the backend
   const fetchVideos = async () => {
@@ -99,6 +102,10 @@
       videos.value = [...videos.value, ...newVideos]
       // Pre-fetch thumbnails
       await Promise.all(newVideos.map(video => fetchThumbnail(video.id)))
+
+      // Check if any video is in PROCESSING state
+      const hasProcessing = videos.value.some(video => video.status === 'PROCESSING')
+      updatePollingState(hasProcessing)
     } catch (error) {
       const axiosError = error as AxiosError
       console.error('Error fetching videos:', axiosError.message, axiosError.response?.data || axiosError.response?.status)
@@ -154,9 +161,40 @@
     fetchVideos()
   }
 
+  // Centralized polling state management
+  const updatePollingState = (hasProcessing: boolean) => {
+    if (hasProcessing && !isPolling.value) {
+      console.log('Starting polling for PROCESSING videos')
+      isPolling.value = true
+      pollInterval = setInterval(fetchVideos, 5000) // Poll every 5 seconds
+    } else if (!hasProcessing && isPolling.value) {
+      console.log('Stopping polling: No PROCESSING videos')
+      clearInterval(pollInterval!)
+      pollInterval = null
+      isPolling.value = false
+    }
+  }
+
+  // Trigger refresh after navigation (e.g., from upload)
+  const refreshVideos = () => {
+    page.value = 1 // Reset to first page
+    videos.value = [] // Clear current videos
+    fetchVideos() // Fetch fresh data
+  }
+
   // Fetch videos on mount
   onMounted(() => {
     fetchVideos()
+    window.addEventListener('refreshVideos', refreshVideos)
+  })
+
+  onUnmounted(() => {
+    window.removeEventListener('refreshVideos', refreshVideos)
+    if (pollInterval) {
+      clearInterval(pollInterval)
+      pollInterval = null
+      isPolling.value = false
+    }
   })
 </script>
 

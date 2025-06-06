@@ -25,4 +25,6 @@ public class VideoDetailsResponseDTO {
     private final Double duration;
     @JsonProperty("uploadTime")
     private final String uploadTime;
+    @JsonProperty("status")
+    private final VideoStatus status;
 }
