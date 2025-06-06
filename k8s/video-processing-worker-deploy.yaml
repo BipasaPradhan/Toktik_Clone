@@ -1,24 +1,34 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: convert-worker
-  labels:
-    app: convert-worker
+  name: video-processing-worker
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: convert-worker
+      app: video-processing-worker
   template:
     metadata:
       labels:
-        app: convert-worker
+        app: video-processing-worker
     spec:
       imagePullSecrets:
         - name: ghcr-secret
       containers:
-        - name: convert-worker
-          image: ghcr.io/bipasapradhan/convert-service:latest
+        - name: video-processing-worker
+          image: ghcr.io/bipasapradhan/video-processing-service:latest
+          command: ["celery"]
+          args:
+            [
+              "-A",
+              "tasks",
+              "worker",
+              "--pool=solo",
+              "--loglevel=INFO",
+              "-E",
+              "-Q",
+              "video_processing_queue",
+            ]
           env:
             - name: S3_ENDPOINT_URL
               valueFrom:

@@ -49,3 +49,5 @@ spec:
                 secretKeyRef:
                   name: celery-secret
                   key: CELERY_RESULT_BACKEND
+            - name: TZ
+              value: "UTC"

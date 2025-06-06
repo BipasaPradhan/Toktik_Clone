@@ -21,4 +21,4 @@ COPY . .
 RUN chown -R appuser:appuser /app
 USER appuser
 
-CMD ["celery", "-A", "chunking", "worker", "--pool=solo", "--loglevel=INFO", "-E", "-Q", "chunking_queue"]
+CMD ["celery", "-A", "app.chunking", "worker", "--pool=solo", "--loglevel=INFO", "-E", "-Q", "chunking_queue"]
