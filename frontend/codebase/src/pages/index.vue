@@ -166,7 +166,7 @@
     if (hasProcessing && !isPolling.value) {
       console.log('Starting polling for PROCESSING videos')
       isPolling.value = true
-      pollInterval = setInterval(fetchVideos, 5000) // Poll every 5 seconds
+      pollInterval = setInterval(fetchVideos, 30000)
     } else if (!hasProcessing && isPolling.value) {
       console.log('Stopping polling: No PROCESSING videos')
       clearInterval(pollInterval!)

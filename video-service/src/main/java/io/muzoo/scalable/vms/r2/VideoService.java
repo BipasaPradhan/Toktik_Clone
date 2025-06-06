@@ -68,6 +68,10 @@ public class VideoService {
     }
 
     public String generatePresignedDownloadUrl(String objectKey) {
+        if (objectKey == null || objectKey.isEmpty()) {
+            System.out.println("Skipping presigned URL generation: objectKey is null or empty");
+            return null;
+        }
         GetObjectRequest getObjectRequest = GetObjectRequest.builder()
                 .bucket(bucketName)
                 .key(objectKey)
@@ -117,6 +121,11 @@ public class VideoService {
         video.setChunkedUrl(convertedUrl);
         video.setDuration(duration);
         video.setStatus(VideoStatus.UPLOADED);
+        try {
+            Thread.sleep(10000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
         Video updatedVideo = videoRepository.save(video);
         System.out.println("Updated video metadata for ID: " + videoId + ", status: " + VideoStatus.UPLOADED);
         return updatedVideo;
@@ -129,6 +138,7 @@ public class VideoService {
         int offset = (page - 1) * size;
         return videoRepository.findByVisibilityAndStatus("Public", size, offset);
     }
+
     @Transactional
     public VideoDetailsResponseDTO getVideoDetails(Long videoId, String userId) {
         System.out.println("Attempting to fetch video with ID: " + videoId + " for userId: " + userId);
@@ -171,7 +181,6 @@ public class VideoService {
 
     private String getRewrittenHlsPlaylist(String hlsPlaylistKey) {
         try {
-            // Fetch .m3u8 file from R2
             GetObjectRequest getObjectRequest = GetObjectRequest.builder()
                     .bucket(bucketName)
                     .key(hlsPlaylistKey)
@@ -179,9 +188,7 @@ public class VideoService {
             try (ResponseInputStream<GetObjectResponse> response = s3Client.getObject(getObjectRequest);
                  BufferedReader reader = new BufferedReader(new InputStreamReader(response))) {
                 String playlistContent = reader.lines().collect(Collectors.joining("\n"));
-
-                // Rewrite .ts segment URLs
-                String basePath = hlsPlaylistKey.substring(0, hlsPlaylistKey.lastIndexOf('/') + 1); // e.g., userId/output/video_id/
+                String basePath = hlsPlaylistKey.substring(0, hlsPlaylistKey.lastIndexOf('/') + 1);
                 StringBuilder rewrittenPlaylist = new StringBuilder();
                 for (String line : playlistContent.split("\n")) {
                     if (line.endsWith(".ts")) {

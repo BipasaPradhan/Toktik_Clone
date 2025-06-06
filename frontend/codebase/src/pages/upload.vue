@@ -110,7 +110,7 @@
     const userId = authStore.getUsername || 'default-user';
     console.log('Requesting presigned URL for userId:', userId, 'filename:', filename);
     const res = await fetch(
-      `/videos/presign-upload?videoFileName=${encodeURIComponent(filename)}&userId=${encodeURIComponent(userId)}`,
+      `/api/videos/presign-upload?videoFileName=${encodeURIComponent(filename)}&userId=${encodeURIComponent(userId)}`,
       { credentials: 'include' }
     );
     if (!res.ok) {
@@ -154,7 +154,7 @@
       userId,
     }).toString();
     const res = await fetch(
-      `/videos/metadata?${params}`,
+      `/api/videos/metadata?${params}`,
       {
         method: 'POST',
         credentials: 'include',
@@ -193,20 +193,12 @@
         objectKey,
       });
 
-      // Navigate and trigger refresh
       router.push('/manage').then(() => {
-        // Wait for the route to mount, then refresh
-        const manageRoute = router.currentRoute.value.path === '/manage'
-        if (manageRoute) {
-          // Access the manage component instance or call a global refresh method
-          // For now, assume refreshMyVideos is available globally or via event
-          window.dispatchEvent(new Event('refreshMyVideos')) // Custom event to trigger refresh
-        } else {
-          router.push('/').then(() => {
-            window.dispatchEvent(new Event('refreshVideos')) // Custom event for index
-          })
-        }
-      })
+        setTimeout(() => {
+          console.log('Triggering manageRefresh after delay');
+          window.manageRefresh?.();
+        }, 2000); // 2-second delay to ensure component is mounted
+      });
     } catch (err) {
       console.error('Upload failed:', err);
       alert('Failed to upload video or save metadata. Please try again.');

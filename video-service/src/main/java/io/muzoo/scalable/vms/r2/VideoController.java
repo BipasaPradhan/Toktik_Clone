@@ -2,6 +2,7 @@ package io.muzoo.scalable.vms.r2;
 
 import io.muzoo.scalable.vms.Video;
 import io.muzoo.scalable.vms.VideoDetailsResponseDTO;
+import io.muzoo.scalable.vms.VideoStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -9,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -95,19 +97,29 @@ public class VideoController {
             @RequestParam(defaultValue = "20") int size,
             @RequestHeader("X-User-Id") String userId) {
         Map<String, Object> response = new HashMap<>();
-        response.put("videos", videoService.getMyVideos(page, size, userId).stream()
-                .map(v -> {
-                    Map<String, Object> videoInfo = new HashMap<>();
-                    videoInfo.put("id", v.getId());
-                    videoInfo.put("title", v.getTitle());
-                    videoInfo.put("description", v.getDescription());
-                    videoInfo.put("visibility", v.getVisibility());
-                    videoInfo.put("thumbnailUrl", videoService.generatePresignedDownloadUrl(v.getThumbnailUrl()));
-                    videoInfo.put("uploadTime", v.getUploadTime().toString());
-                    videoInfo.put("userId", v.getUserId());
-                    return videoInfo;
+        List<VideoDetailsResponseDTO> videos = videoService.getMyVideos(page, size, userId).stream()
+                .map(video -> {
+                    String thumbnailUrl = video.getStatus() == VideoStatus.UPLOADED
+                            ? videoService.generatePresignedDownloadUrl(video.getThumbnailUrl())
+                            : null;
+                    String convertedUrl = video.getStatus() == VideoStatus.UPLOADED && video.getChunkedUrl() != null
+                            ? videoService.generatePresignedDownloadUrl(video.getChunkedUrl())
+                            : null;
+                    return VideoDetailsResponseDTO.builder()
+                            .hlsUrl(video.getStatus() == VideoStatus.UPLOADED ? video.getHlsPlaylistUrl() : null)
+                            .hlsKey(video.getHlsPlaylistUrl())
+                            .thumbnailUrl(thumbnailUrl)
+                            .convertedUrl(convertedUrl)
+                            .title(video.getTitle())
+                            .description(video.getDescription())
+                            .userId(video.getUserId())
+                            .duration(video.getDuration())
+                            .uploadTime(video.getUploadTime().toString())
+                            .status(video.getStatus())
+                            .build();
                 })
-                .collect(Collectors.toList()));
+                .collect(Collectors.toList());
+        response.put("videos", videos);
         return ResponseEntity.ok(response);
     }
 

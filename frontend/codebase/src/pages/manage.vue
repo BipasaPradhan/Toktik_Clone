@@ -35,10 +35,12 @@
               <v-col class="pa-2" cols="3">
                 <div class="thumbnail-wrapper">
                   <v-img
+                    v-if="video.thumbnailUrl"
                     alt="Video Thumbnail"
                     class="thumbnail"
-                    :src="video.thumbnailUrl || 'https://via.placeholder.com/150'"
+                    :src="video.thumbnailUrl"
                   />
+                  <div v-else class="thumbnail placeholder-bg"></div>
                 </div>
               </v-col>
 
@@ -143,7 +145,7 @@
     try {
       loading.value = true
       const userId = authStore.username || ''
-      const response = await axios.get(`/videos/my`, {
+      const response = await axios.get(`/api/videos/my`, {
         params: { page: page.value, size: 20 },
         headers: { 'X-User-Id': userId },
       })
@@ -152,6 +154,7 @@
 
       // Check if any video is in PROCESSING state
       const hasProcessing = videos.value.some(video => video.status === 'PROCESSING')
+      console.log('Has PROCESSING videos:', hasProcessing);
       updatePollingState(hasProcessing)
     } catch (error) {
       const axiosError = error as AxiosError
@@ -176,7 +179,7 @@
   const saveEdit = async () => {
     try {
       const userId = authStore.username || ''
-      await axios.put(`/videos/${editedVideo.value.id}`, {
+      await axios.put(`/api/videos/${editedVideo.value.id}`, {
         title: editedVideo.value.title,
         description: editedVideo.value.description,
         visibility: editedVideo.value.visibility,
@@ -200,7 +203,7 @@
     if (hasProcessing && !isPolling.value) {
       console.log('Starting polling for PROCESSING videos')
       isPolling.value = true
-      pollInterval = setInterval(fetchMyVideos, 5000) // Poll every 5 seconds
+      pollInterval = setInterval(fetchMyVideos, 30000)
     } else if (!hasProcessing && isPolling.value) {
       console.log('Stopping polling: No PROCESSING videos')
       clearInterval(pollInterval!)
@@ -218,18 +221,20 @@
 
   // Fetch videos on mount
   onMounted(() => {
-    fetchMyVideos()
-    window.addEventListener('refreshMyVideos', refreshMyVideos)
-  })
+    fetchMyVideos();
+    window.addEventListener('refreshMyVideos', refreshMyVideos);
+    window.manageRefresh = refreshMyVideos;
+  });
 
   onUnmounted(() => {
-    window.removeEventListener('refreshMyVideos', refreshMyVideos)
+    window.removeEventListener('refreshMyVideos', refreshMyVideos);
+    delete window.manageRefresh; // Clean up
     if (pollInterval) {
-      clearInterval(pollInterval)
-      pollInterval = null
-      isPolling.value = false
+      clearInterval(pollInterval);
+      pollInterval = null;
+      isPolling.value = false;
     }
-  })
+  });
 </script>
 
 <style scoped lang="scss">
@@ -302,6 +307,13 @@
   font-size: 0.875rem;
   color: #666;
   padding: 0 16px 8px;
+}
+
+.placeholder-bg {
+  background-color: #ccc;
+  width: 100%;
+  height: 100%;
+  border-radius: 8px 0 0 8px;
 }
 </style>
 
