@@ -4,8 +4,6 @@ import shutil
 import redis
 import json
 from s3_client import S3Client
-import websocket
-import time
 
 app = Celery('tasks', broker='redis://redis:6379/0', backend='redis://redis:6379/0')
 s3_client = S3Client()
@@ -97,25 +95,6 @@ def update_metadata(group_result, video_id, hls_playlist_key, thumbnail_key, con
         print(f"Uploaded thumbnail to S3: {thumbnail_key}")
     else:
         print(f"Thumbnail not found: {thumb_path}")
-
-    # Send WebSocket message
-    ws_url = "ws://video-processing-service:80/ws"  # Use service name from docker-compose
-    ws = websocket.WebSocket()
-    try:
-        ws.connect(ws_url)
-        message = {
-            "videoId": str(video_id),
-            "hlsUrl": hls_playlist_key,
-            "thumbnailUrl": thumbnail_key,
-            "convertedUrl": converted_key,
-            "duration": None
-        }
-        ws.send(json.dumps({"type": "video/processed", "content": message}))
-        print(f"Sent WebSocket message: {message}")
-    except Exception as e:
-        print(f"WebSocket error: {e}")
-    finally:
-        ws.close()
 
     # Publish to video:processed (keep for backward compatibility)
     message_redis = {

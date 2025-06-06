@@ -1,24 +1,24 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: thumbnail-worker
-  labels:
-    app: thumbnail-worker
+  name: video-processing-service
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: thumbnail-worker
+      app: video-processing-service
   template:
     metadata:
       labels:
-        app: thumbnail-worker
+        app: video-processing-service
     spec:
       imagePullSecrets:
         - name: ghcr-secret
       containers:
-        - name: thumbnail-worker
-          image: ghcr.io/bipasapradhan/thumbnail-service:latest
+        - name: video-processing-service
+          image: ghcr.io/bipasapradhan/video-processing-service:latest
+          ports:
+            - containerPort: 80
           env:
             - name: S3_ENDPOINT_URL
               valueFrom:
@@ -51,3 +51,10 @@ spec:
                   key: CELERY_RESULT_BACKEND
             - name: TZ
               value: "Asia/Bangkok"
+          volumeMounts:
+            - name: counter-volume
+              mountPath: /app/counter
+      volumes:
+        - name: counter-volume
+          persistentVolumeClaim:
+            claimName: counter-pvc

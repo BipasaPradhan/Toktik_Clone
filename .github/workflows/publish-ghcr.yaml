@@ -54,3 +54,8 @@ jobs:
         run: |
           docker build -t ghcr.io/bipasapradhan/thumbnail-service:latest -f thumbnail_service/Dockerfile_thumbnail thumbnail_service/
           docker push ghcr.io/bipasapradhan/thumbnail-service:latest
+
+      - name: Build and Push Video Processing Service
+        run: |
+          docker build -t ghcr.io/bipasapradhan/video-processing-service:latest -f video_processing_service/Dockerfile video_processing_service/
+          docker push ghcr.io/bipasapradhan/video-processing-service:latest
