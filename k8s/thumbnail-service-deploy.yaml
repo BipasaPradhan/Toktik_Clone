@@ -23,7 +23,7 @@ spec:
           args:
             [
               "-A",
-              "app.convert",
+              "app.thumbnail",
               "worker",
               "--pool=solo",
               "--loglevel=INFO",
