@@ -3,9 +3,7 @@
     <v-container fluid>
       <v-row class="justify-space-between mb-6 pa-4" style="position: sticky; top: 0; background: #f5f5f0; z-index: 1;">
         <v-col cols="auto">
-          <v-btn class="toc-btn" variant="text" @click="goHome">
-            TocTik
-          </v-btn>
+          <Logo @click="goHome" />
         </v-col>
         <v-col cols="auto" />
       </v-row>
@@ -110,7 +108,7 @@
     const userId = authStore.getUsername || 'default-user';
     console.log('Requesting presigned URL for userId:', userId, 'filename:', filename);
     const res = await fetch(
-      `/api/videos/presign-upload?videoFileName=${encodeURIComponent(filename)}&userId=${encodeURIComponent(userId)}`,
+      `/videos/presign-upload?videoFileName=${encodeURIComponent(filename)}&userId=${encodeURIComponent(userId)}`,
       { credentials: 'include' }
     );
     if (!res.ok) {
@@ -154,7 +152,7 @@
       userId,
     }).toString();
     const res = await fetch(
-      `/api/videos/metadata?${params}`,
+      `/videos/metadata?${params}`,
       {
         method: 'POST',
         credentials: 'include',
@@ -212,17 +210,16 @@
 </script>
 
 <style scoped lang="scss">
-.toc-btn {
-  font-weight: bold;
-  font-size: 18px;
-  text-transform: none;
-  color: #2b2119 !important;
-}
 
 .home-background {
   background-color: #f5f5f0;
   min-height: 100vh;
 }
+
+.toc-logo:hover {
+  color: #800020 !important;
+}
+
 </style>
 
 <route lang="json5">

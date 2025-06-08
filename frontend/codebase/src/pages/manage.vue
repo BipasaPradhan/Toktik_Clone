@@ -3,9 +3,7 @@
     <!-- Top Navigation Bar -->
     <div class="top-bar px-4 py-4">
       <!-- Left: Toctik logo -->
-      <v-btn class="toc-btn" size="large" variant="text" @click="goHome">
-        TocTik
-      </v-btn>
+      <Logo @click="goHome" />
 
       <!-- Right: Upload button -->
       <div class="top-buttons">
@@ -145,7 +143,7 @@
     try {
       loading.value = true
       const userId = authStore.username || ''
-      const response = await axios.get(`/api/videos/my`, {
+      const response = await axios.get(`/videos/my`, {
         params: { page: page.value, size: 20 },
         headers: { 'X-User-Id': userId },
       })
@@ -179,7 +177,7 @@
   const saveEdit = async () => {
     try {
       const userId = authStore.username || ''
-      await axios.put(`/api/videos/${editedVideo.value.id}`, {
+      await axios.put(`/videos/${editedVideo.value.id}`, {
         title: editedVideo.value.title,
         description: editedVideo.value.description,
         visibility: editedVideo.value.visibility,
@@ -260,10 +258,6 @@
   gap: 12px;
 }
 
-.toc-btn {
-  font-size: 1.5rem !important;
-  padding: 8px 16px !important;
-}
 
 .upload-btn {
   color: #2b2119 !important;
@@ -315,6 +309,11 @@
   height: 100%;
   border-radius: 8px 0 0 8px;
 }
+
+.toc-logo:hover {
+  color: #800020 !important;
+}
+
 </style>
 
 <route lang="json5">
