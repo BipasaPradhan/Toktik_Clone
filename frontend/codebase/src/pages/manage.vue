@@ -143,7 +143,7 @@
     try {
       loading.value = true
       const userId = authStore.username || ''
-      const response = await axios.get(`/videos/my`, {
+      const response = await axios.get(`/api/videos/my`, {
         params: { page: page.value, size: 20 },
         headers: { 'X-User-Id': userId },
       })
@@ -177,7 +177,7 @@
   const saveEdit = async () => {
     try {
       const userId = authStore.username || ''
-      await axios.put(`/videos/${editedVideo.value.id}`, {
+      await axios.put(`/api/videos/${editedVideo.value.id}`, {
         title: editedVideo.value.title,
         description: editedVideo.value.description,
         visibility: editedVideo.value.visibility,

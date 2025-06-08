@@ -90,7 +90,7 @@
       videoError.value = '';
 
       const userId = authStore.username || 'default';
-      const response = await axios.get(`/videos/details`, {
+      const response = await axios.get(`/api/videos/details`, {
         params: { videoId, userId },
         headers: { 'X-User-Id': userId },
       });
