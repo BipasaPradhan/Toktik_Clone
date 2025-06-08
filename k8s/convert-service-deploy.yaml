@@ -19,6 +19,18 @@ spec:
       containers:
         - name: convert-worker
           image: ghcr.io/bipasapradhan/convert-service:latest
+          command: ["celery"]
+          args:
+            [
+              "-A",
+              "app.convert",
+              "worker",
+              "--pool=solo",
+              "--loglevel=INFO",
+              "-E",
+              "-Q",
+              "convert_queue",
+            ]
           env:
             - name: S3_ENDPOINT_URL
               valueFrom:

@@ -6,6 +6,7 @@ import json
 from s3_client import S3Client
 
 app = Celery('tasks', broker='redis://redis:6379/0', backend='redis://redis:6379/0')
+app.config_from_object('celeryconfig')
 s3_client = S3Client()
 redis_client = redis.Redis(host='redis', port=6379, decode_responses=True)
 
@@ -22,7 +23,7 @@ def process_video_task(video_id, s3_key, user_id):
     thumbnail_key = f"{user_id}/output/{video_id}/thumb.jpg"
 
     # Chain tasks
-    convert_task = app.signature('convert.convert_video', args=[video_id, s3_key, converted_key, user_id], queue='convert_queue')
+    convert_task = app.signature('convert.convert_video', args=[video_id, s3_key, converted_key, user_id])
     # chunking_task = app.signature('chunking.chunk_video_to_hls', args=[output_prefix, user_id], queue='chunking_queue')
     # thumbnail_task = app.signature('thumbnail.extract_thumbnail', args=[thumb_path, user_id], queue='thumbnail_queue')
     # update_metadata_task = app.signature('tasks.update_metadata', args=[video_id, hls_playlist_key, thumbnail_key, converted_key], queue='video_processing_queue')
