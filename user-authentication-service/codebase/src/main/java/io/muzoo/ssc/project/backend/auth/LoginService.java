@@ -1,6 +1,5 @@
 package io.muzoo.ssc.project.backend.auth;
 
-
 import io.muzoo.ssc.project.backend.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -28,11 +27,8 @@ import java.util.List;
 public class LoginService {
 
     private final AuthenticationDetailsSource<HttpServletRequest, ?> authenticationDetailsSource = new WebAuthenticationDetailsSource();
-
     private final PasswordEncoder passwordEncoder;
-
     private final UserRepository userRepository;
-
     private final SecurityContextRepository securityContextRepository;
 
     public LoginService(PasswordEncoder passwordEncoder, UserRepository userRepository, SecurityContextRepository securityContextRepository) {
@@ -42,11 +38,19 @@ public class LoginService {
     }
 
     public void login(String username, String credential, HttpServletRequest request, HttpServletResponse response) {
-        AbstractAuthenticationToken authRequest = new PreAuthenticatedAuthenticationToken(username, credential);
-        String hashedPassword = userRepository.findFirstByUsername(username).getPassword();
+        // Check if user exists
+        var userEntity = userRepository.findFirstByUsername(username);
+        if (userEntity == null) {
+            throw new BadCredentialsException("Username or password is incorrect.");
+        }
+
+        // Verify password
+        String hashedPassword = userEntity.getPassword();
         if (!passwordEncoder.matches(credential, hashedPassword)) {
             throw new BadCredentialsException("Username or password is incorrect.");
         }
+
+        AbstractAuthenticationToken authRequest = new PreAuthenticatedAuthenticationToken(username, credential);
         authRequest.setDetails(authenticationDetailsSource.buildDetails(request));
         authRequest.setAuthenticated(true);
         Authentication authResult = loadUserDetails(authRequest, username);
@@ -55,20 +59,19 @@ public class LoginService {
         securityContextRepository.saveContext(context, request, response);
     }
 
-
     private UsernamePasswordAuthenticationToken loadUserDetails(Authentication authentication, String username) {
         List<GrantedAuthority> grantedAuths = new ArrayList<>();
         grantedAuths.add(new SimpleGrantedAuthority("ROLE_USER"));
 
-        User user = new User(username,
-                "", Collections.unmodifiableCollection(grantedAuths));
+        // Use a dummy password or omit it since it's already verified
+        User user = new User(username, "", Collections.unmodifiableCollection(grantedAuths));
 
         UsernamePasswordAuthenticationToken token = new UsernamePasswordAuthenticationToken(
                 user,
-                authentication.getCredentials(),
-                grantedAuths);
+                null, // No need to pass credentials again
+                grantedAuths
+        );
         token.setDetails(authentication.getDetails());
         return token;
     }
-
 }

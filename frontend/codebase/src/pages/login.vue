@@ -3,7 +3,8 @@
   import { useRouter } from 'vue-router'
   import axios from 'axios'
   import type { VForm } from 'vuetify/components'
-  import { useAuthStore } from '@/stores/auth.ts';
+  import { useAuthStore } from '@/stores/auth.ts'
+  import Swal from 'sweetalert2'
 
   const router = useRouter()
 
@@ -19,19 +20,46 @@
 
   const submit = async () => {
     if (form.value?.validate()) {
-      const formData = new FormData()
-      formData.append('username', username.value)
-      formData.append('password', password.value)
+      const params = new URLSearchParams()
+      params.append('username', username.value)
+      params.append('password', password.value)
 
-      const response = await axios.post('/api/login', formData)
+      try {
+        const response = await axios.post('/api/login', params, {
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        })
 
-      if (response.data.success) {
-        const authStore = useAuthStore();
-        await authStore.login(response.data.username, response.data.name, response.data.role)
-        await router.push({ path: '/' })
-      } else {
-        errorMessage.value = response.data.message
-        alert(errorMessage.value)
+        if (response.data.success) {
+          const authStore = useAuthStore()
+          await authStore.login(response.data.username, response.data.name, response.data.role) // Adjust based on DTO
+          await router.push({ path: '/' })
+        } else {
+          errorMessage.value = response.data.message || 'Login failed'
+          Swal.fire({
+            icon: 'error',
+            title: 'Login Failed',
+            text: errorMessage.value,
+            confirmButtonText: 'OK',
+            background: '#ff3333', // Red background
+            color: '#ffffff',     // White text for contrast
+            customClass: {
+              popup: 'animated fadeInDown'
+            }
+          })
+        }
+      } catch {
+        errorMessage.value = 'Invalid credentials'
+        Swal.fire({
+          icon: 'error',
+          title: 'Login Failed',
+          text: errorMessage.value,
+          confirmButtonText: 'OK',
+          background: '#ff3333', // Red background
+          color: '#ffffff',     // White text for contrast
+          customClass: {
+            popup: 'animated fadeInDown'
+          }
+        })
       }
     }
   }
@@ -41,16 +69,13 @@
     password.value = ''
     form.value?.resetValidation()
   }
-
 </script>
-
 
 <template>
   <v-main class="auth-background">
     <v-container class="d-flex align-center justify-center" style="min-height: 100vh;">
       <v-card class="auth-card" width="800">
         <v-row no-gutters>
-          <!-- Login Section -->
           <v-col class="login-section pa-8" cols="12" md="6">
             <v-card-title class="text-center mb-6" style="color: #800020; font-size: 1.5rem;">
               Login to Your Account
@@ -94,7 +119,6 @@
             </v-form>
           </v-col>
 
-          <!-- Signup Section -->
           <v-col class="signup-section pa-8 d-flex align-center" cols="12" md="6">
             <div class="text-center w-100">
               <v-card-title class="text-white mb-4">New Here?</v-card-title>
