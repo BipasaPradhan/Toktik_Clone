@@ -10,12 +10,12 @@ s3_client = S3Client()
 @app.task(name='convert.convert_video')
 def convert_video(video_id, s3_key, converted_key, user_id):
     # temporary local paths within the pod's ephemeral storage
-    input_path = f"/tmp/{video_id}_input.mp4"
-    output_path = f"/tmp/{video_id}_converted.mp4"
+    temp_dir = f"/tmp/video_convert/{video_id}"
+    input_path = f"{temp_dir}/input.mp4"
+    output_path = f"{temp_dir}/converted.mp4"
 
     # Ensure temporary directories exist
-    os.makedirs(os.path.dirname(input_path), exist_ok=True)
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    os.makedirs(temp_dir, exist_ok=True)
 
     # Download the video from R2
     print(f"Downloading video from R2: {s3_key}")
@@ -44,9 +44,9 @@ def convert_video(video_id, s3_key, converted_key, user_id):
                 print(f"Failed to remove temporary file {file_path}: {e}")
 
     # Remove the temporary directory if empty
-    temp_dir = os.path.dirname(input_path)
     if os.path.exists(temp_dir) and not os.listdir(temp_dir):
         shutil.rmtree(temp_dir)
         print(f"Removed empty temporary directory: {temp_dir}")
 
+    print(f"Video conversion completed successfully for video_id: {video_id}")
     return converted_key  # Return the R2 key for the converted video
