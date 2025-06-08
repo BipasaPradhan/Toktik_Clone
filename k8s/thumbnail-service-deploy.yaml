@@ -19,6 +19,18 @@ spec:
       containers:
         - name: thumbnail-worker
           image: ghcr.io/bipasapradhan/thumbnail-service:latest
+          command: ["celery"]
+          args:
+            [
+              "-A",
+              "app.convert",
+              "worker",
+              "--pool=solo",
+              "--loglevel=INFO",
+              "-E",
+              "-Q",
+              "thumbnail_queue",
+            ]
           env:
             - name: S3_ENDPOINT_URL
               valueFrom:
