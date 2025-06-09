@@ -24,7 +24,7 @@ def process_video_task(video_id, s3_key, user_id):
 
     # Chain tasks
     convert_task = app.signature('convert.convert_video', args=[video_id, s3_key, converted_key, user_id], queue = 'convert_queue')
-    chunking_task = app.signature('chunking.chunk_video_to_hls', args=[converted_key,user_id, hls_playlist_key], queue='chunking_queue')
+    chunking_task = app.signature('chunking.chunk_video_to_hls', args=[user_id, hls_playlist_key], queue='chunking_queue')
     thumbnail_task = app.signature('thumbnail.extract_thumbnail', args=[converted_key, user_id, thumbnail_key], queue='thumbnail_queue')
     # update_metadata_task = app.signature('tasks.update_metadata', args=[video_id, hls_playlist_key, thumbnail_key, converted_key], queue='video_processing_queue')
 
