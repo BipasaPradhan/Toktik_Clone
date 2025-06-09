@@ -9,7 +9,7 @@ from botocore.exceptions import ClientError
 app = Celery('chunking', broker='redis://redis:6379/0', backend='redis://redis:6379/0')
 s3_client = S3Client()
 
-@app.task(name='chunking.chunk_video_to_hls')
+@app.task(name='chunking.chunk_video_to_hls', queue='chunking_queue')
 def chunk_video_to_hls(converted_key, user_id, hls_playlist_key):
     video_id = os.path.basename(os.path.dirname(hls_playlist_key))
     print(f"Starting chunking for video_id: {video_id}, user_id: {user_id}")
