@@ -42,7 +42,7 @@ def process_video_task(video_id, s3_key, user_id):
     return {'status': 'success', 'video_id': video_id, 'task_id': workflow.id}
 
 @app.task(queue='video_processing_queue')
-def update_metadata(group_result, video_id, hls_playlist_key, thumbnail_key, converted_key):
+def update_metadata(group_result, converted_key):
     print(f"Updating metadata for video_id: {video_id}")
 
     # Extract hls_playlist_key and thumbnail_key from group_result
