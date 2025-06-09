@@ -9,7 +9,7 @@ app = Celery('thumbnail', broker='redis://redis:6379/0', backend='redis://redis:
 s3_client = S3Client()
 
 @app.task(name='thumbnail.extract_thumbnail')
-def extract_thumbnail(converted_key, user_id=None, thumbnail_key=None):
+def extract_thumbnail(converted_key, user_id, thumbnail_key):
     video_id = os.path.basename(os.path.dirname(thumbnail_key))
     print(f"Starting thumbnail extraction for video_id: {video_id}, user_id: {user_id}")
 

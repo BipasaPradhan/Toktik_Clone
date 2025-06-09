@@ -24,8 +24,8 @@ def process_video_task(video_id, s3_key, user_id):
 
     # Chain tasks
     convert_task = app.signature('convert.convert_video', args=[video_id, s3_key, converted_key, user_id])
-    chunking_task = app.signature('chunking.chunk_video_to_hls').partial(user_id=user_id, hls_playlist_key=hls_playlist_key)
-    thumbnail_task = app.signature('thumbnail.extract_thumbnail').partial(user_id=user_id, thumbnail_key=thumbnail_key)
+    chunking_task = app.signature('chunking.chunk_video_to_hls', args=[user_id, hls_playlist_key])
+    thumbnail_task = app.signature('thumbnail.extract_thumbnail', args=[user_id, thumbnail_key])
     # update_metadata_task = app.signature('tasks.update_metadata', args=[video_id, hls_playlist_key, thumbnail_key, converted_key], queue='video_processing_queue')
 
     # Run chunking and thumbnail in parallel, followed by metadata update
