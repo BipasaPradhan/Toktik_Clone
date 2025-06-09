@@ -23,10 +23,10 @@ def process_video_task(video_id, s3_key, user_id):
     thumbnail_key = f"{user_id}/output/{video_id}/thumb.jpg"
 
     # Chain tasks
-    convert_task = app.signature('convert.convert_video', args=[video_id, s3_key, converted_key, user_id])
-    chunking_task = app.signature('chunking.chunk_video_to_hls', args=[converted_key, user_id, hls_playlist_key])
-    thumbnail_task = app.signature('thumbnail.extract_thumbnail', args=[converted_key, user_id, thumbnail_key])
-    # update_metadata_task = app.signature('tasks.update_metadata', args=[video_id, hls_playlist_key, thumbnail_key, converted_key], queue='video_processing_queue')
+    convert_task = app.signature('convert.convert_video', args=[video_id, s3_key, converted_key, user_id], queue = 'convert_queue')
+    chunking_task = app.signature('chunking.chunk_video_to_hls', args=[user_id, hls_playlist_key], queue='chunking_queue')
+    thumbnail_task = app.signature('thumbnail.extract_thumbnail', args=[user_id, thumbnail_key], queue='thumbnail_queue')
+    update_metadata_task = app.signature('tasks.update_metadata', args=[video_id, converted_key], queue='video_processing_queue')
 
     # Run chunking and thumbnail in parallel, followed by metadata update
     workflow = chain(
@@ -35,34 +35,22 @@ def process_video_task(video_id, s3_key, user_id):
             chunking_task,
             thumbnail_task
         ),
-        # update_metadata_task
+        update_metadata_task
     ).apply_async()
     print(f"Task chain enqueued with ID: {workflow.id}")
 
     return {'status': 'success', 'video_id': video_id, 'task_id': workflow.id}
 
 @app.task(queue='video_processing_queue')
-def update_metadata(group_result, video_id, hls_playlist_key, thumbnail_key, converted_key):
+def update_metadata(group_result, video_id, converted_key):
     print(f"Updating metadata for video_id: {video_id}")
+
+    # Extract hls_playlist_key and thumbnail_key from group_result
     try:
-        hls_playlist_path, thumb_path = group_result
+        hls_playlist_key, thumbnail_key = group_result
     except (TypeError, ValueError) as e:
         print(f"Error unpacking group_result: {e}")
-        hls_playlist_path = f"/app/output/{video_id}/playlist.m3u8"
-        thumb_path = f"/app/output/{video_id}/thumb.jpg"
-
-    # Upload HLS playlist and thumbnail to S3
-    if os.path.exists(hls_playlist_path):
-        s3_client.upload_file(hls_playlist_path, hls_playlist_key)
-        print(f"Uploaded HLS playlist to S3: {hls_playlist_key}")
-    else:
-        print(f"HLS playlist not found: {hls_playlist_path}")
-
-    if os.path.exists(thumb_path):
-        s3_client.upload_file(thumb_path, thumbnail_key)
-        print(f"Uploaded thumbnail to S3: {thumbnail_key}")
-    else:
-        print(f"Thumbnail not found: {thumb_path}")
+        raise Exception(f"Failed to unpack group_result: {e}")
 
     # Publish to video:processed (keep for backward compatibility)
     message_redis = {
@@ -74,11 +62,5 @@ def update_metadata(group_result, video_id, hls_playlist_key, thumbnail_key, con
     }
     redis_client.publish("video:processed", json.dumps(message_redis))
     print(f"Published to video:processed: {message_redis}")
-
-    # Cleanup
-    output_dir = os.path.dirname(hls_playlist_path)
-    if os.path.exists(output_dir):
-        shutil.rmtree(output_dir)
-        print(f"Cleaned up output directory: {output_dir}")
 
     return {'status': 'success', 'video_id': video_id}

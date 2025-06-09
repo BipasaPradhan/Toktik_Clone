@@ -19,6 +19,18 @@ spec:
       containers:
         - name: chunking-worker
           image: ghcr.io/bipasapradhan/chunking-service:latest
+          command: ["celery"]
+          args:
+            [
+              "-A",
+              "app.chunking",
+              "worker",
+              "--pool=solo",
+              "--loglevel=INFO",
+              "-E",
+              "-Q",
+              "chunking_queue",
+            ]
           env:
             - name: S3_ENDPOINT_URL
               valueFrom:

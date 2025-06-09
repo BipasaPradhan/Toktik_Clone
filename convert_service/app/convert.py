@@ -7,7 +7,7 @@ from .s3_client import S3Client
 app = Celery('convert', broker='redis://redis:6379/0', backend='redis://redis:6379/0')
 s3_client = S3Client()
 
-@app.task(name='convert.convert_video')
+@app.task(name='convert.convert_video', queue='convert_queue')
 def convert_video(video_id, s3_key, converted_key, user_id):
     # temporary local paths within the pod's ephemeral storage
     temp_dir = f"/tmp/video_convert/{video_id}"
@@ -48,5 +48,5 @@ def convert_video(video_id, s3_key, converted_key, user_id):
         shutil.rmtree(temp_dir)
         print(f"Removed empty temporary directory: {temp_dir}")
 
-    print(f"Video conversion completed successfully for video_id: {video_id}")
+    print(f"Video conversion completed successfully for video_id: {video_id}. Returning converted_key: {converted_key}")
     return converted_key  # Return the R2 key for the converted video

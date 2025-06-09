@@ -9,7 +9,7 @@ from botocore.exceptions import ClientError
 app = Celery('chunking', broker='redis://redis:6379/0', backend='redis://redis:6379/0')
 s3_client = S3Client()
 
-@app.task(name='chunking.chunk_video_to_hls', max_retries=3, retry_backoff=True)
+@app.task(name='chunking.chunk_video_to_hls', queue='chunking_queue')
 def chunk_video_to_hls(converted_key, user_id, hls_playlist_key):
     video_id = os.path.basename(os.path.dirname(hls_playlist_key))
     print(f"Starting chunking for video_id: {video_id}, user_id: {user_id}")
@@ -57,7 +57,7 @@ def chunk_video_to_hls(converted_key, user_id, hls_playlist_key):
         ffmpeg.run(stream)
         print(f"Generated HLS playlist: {playlist_path}")
     except ffmpeg.Error as e:
-        error_msg = e.stderr.decode() if e.stderr else "No stderr output from FFmpeg"
+        error_msg = e.stderr.decode('utf-8', errors='ignore') if e.stderr else "No stderr output from FFmpeg"
         raise Exception(f"FFmpeg error during HLS chunking: {error_msg}")
 
     # Upload HLS files to S3
