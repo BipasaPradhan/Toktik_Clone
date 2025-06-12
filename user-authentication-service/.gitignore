@@ -17,3 +17,4 @@ dependency-reduced-pom.xml
 *.iml
 README.html
 /codebase/p2_token
+/codebase/.env

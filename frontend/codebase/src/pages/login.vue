@@ -1,12 +1,13 @@
 <script setup lang="ts">
   import { ref } from 'vue'
   import { useRouter } from 'vue-router'
-  import axios from 'axios'
+  import apiClient from '@/plugins/axios';
   import type { VForm } from 'vuetify/components'
   import { useAuthStore } from '@/stores/auth.ts'
   import Swal from 'sweetalert2'
 
   const router = useRouter()
+  const authStore = useAuthStore();
 
   const valid = ref(true)
   const username = ref('admin')
@@ -20,50 +21,32 @@
 
   const submit = async () => {
     if (form.value?.validate()) {
-      const params = new URLSearchParams()
-      params.append('username', username.value)
-      params.append('password', password.value)
+      const formData = new FormData();
+      formData.append('username', username.value);
+      formData.append('password', password.value);
 
       try {
-        const response = await axios.post('/api/login', params, {
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-        })
+        console.log('Attempting login for user:', username.value);
+        const response = await apiClient.post('/api/login', formData);
+        console.log('Login response:', response.data);
 
         if (response.data.success) {
-          const authStore = useAuthStore()
-          await authStore.login(response.data.username, response.data.name, response.data.role) // Adjust based on DTO
-          await router.push({ path: '/' })
+          localStorage.setItem('jwtToken', response.data.data.token);
+          await authStore.login(response.data.data.username, response.data.data.token, response.data.data.role);
+          console.log('Navigating to /');
+          await router.push({ path: '/' });
         } else {
-          errorMessage.value = response.data.message || 'Login failed'
-          Swal.fire({
-            icon: 'error',
-            title: 'Login Failed',
-            text: errorMessage.value,
-            confirmButtonText: 'OK',
-            background: '#ff3333', // Red background
-            color: '#ffffff',     // White text for contrast
-            customClass: {
-              popup: 'animated fadeInDown'
-            }
-          })
+          errorMessage.value = response.data.message;
+          console.error('Login failed:', errorMessage.value);
+          alert(errorMessage.value);
         }
-      } catch {
-        errorMessage.value = 'Invalid credentials'
-        Swal.fire({
-          icon: 'error',
-          title: 'Login Failed',
-          text: errorMessage.value,
-          confirmButtonText: 'OK',
-          background: '#ff3333', // Red background
-          color: '#ffffff',     // White text for contrast
-          customClass: {
-            popup: 'animated fadeInDown'
-          }
-        })
+      } catch (error) {
+        errorMessage.value = 'Login failed. Please try again.';
+        console.error('Login error:', error);
+        alert(errorMessage.value);
       }
     }
-  }
-
+  };
   const reset = () => {
     username.value = ''
     password.value = ''

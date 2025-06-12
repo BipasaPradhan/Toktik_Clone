@@ -9,7 +9,7 @@ import { createRouter, createWebHashHistory } from 'vue-router/auto'
 import { setupLayouts } from 'virtual:generated-layouts'
 import { routes } from 'vue-router/auto-routes'
 import { useAuthStore } from '@/stores/auth.ts';
-import axios from 'axios';
+import apiClient from '@/plugins/axios';
 
 const router = createRouter({
   history: createWebHashHistory(import.meta.env.BASE_URL),
@@ -37,22 +37,34 @@ router.isReady().then(() => {
 
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
+  if (to.path === '/login') {
+    next();
+    return;
+  }
+
   try {
-    const response = await axios.get('/api/whoami')
+    console.log('Fetching /api/whoami');
+    const response = await apiClient.get('/api/whoami', {
+      headers: { 'Content-Type': 'application/json' },
+    });
+    console.log('Whoami response:', response.data);
+
     if (response.data.loggedIn) {
-      await authStore.login(response.data.username, response.data.name, response.data.role)
+      const token = localStorage.getItem('jwtToken') || '';
+      await authStore.login(response.data.username, token, response.data.role);
     } else {
-      await authStore.logout()
+      await authStore.logout();
     }
   } catch (error) {
-    console.error('Error fetching user details:', error)
-    await authStore.logout()
+    console.error('Error fetching /api/whoami:', error);
+    await authStore.logout();
   }
-  if (to.matched.some(record => record.meta.requiresAuth) && !authStore.isLoggedIn) {
-    next('/login')
-    return
-  }
-  next()
-})
 
+  if (to.matched.some(record => record.meta.requiresAuth) && !authStore.isLoggedIn) {
+    console.log('Redirecting to /login: User not authenticated');
+    next('/login');
+  } else {
+    next();
+  }
+});
 export default router

@@ -1,77 +1,43 @@
 package io.muzoo.ssc.project.backend.auth;
 
-import io.muzoo.ssc.project.backend.UserRepository;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.security.authentication.AbstractAuthenticationToken;
-import org.springframework.security.authentication.AuthenticationDetailsSource;
-import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
-import org.springframework.security.web.authentication.preauth.PreAuthenticatedAuthenticationToken;
-import org.springframework.security.web.context.SecurityContextRepository;
-import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import io.muzoo.ssc.project.backend.User;
+import io.muzoo.ssc.project.backend.UserRepository;
+import io.muzoo.ssc.project.backend.util.JwtUtil;
+import org.springframework.security.authentication.*;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
 
 @Service
 public class LoginService {
 
-    private final AuthenticationDetailsSource<HttpServletRequest, ?> authenticationDetailsSource = new WebAuthenticationDetailsSource();
-    private final PasswordEncoder passwordEncoder;
+    private final AuthenticationManager authenticationManager;
+
     private final UserRepository userRepository;
-    private final SecurityContextRepository securityContextRepository;
 
-    public LoginService(PasswordEncoder passwordEncoder, UserRepository userRepository, SecurityContextRepository securityContextRepository) {
-        this.passwordEncoder = passwordEncoder;
+    private final JwtUtil jwtUtil;
+
+    public LoginService(UserRepository userRepository,  JwtUtil jwtUtil, AuthenticationManager authenticationManager) {
         this.userRepository = userRepository;
-        this.securityContextRepository = securityContextRepository;
+        this.jwtUtil = jwtUtil;
+        this.authenticationManager = authenticationManager;
     }
 
-    public void login(String username, String credential, HttpServletRequest request, HttpServletResponse response) {
-        // Check if user exists
-        var userEntity = userRepository.findFirstByUsername(username);
-        if (userEntity == null) {
-            throw new BadCredentialsException("Username or password is incorrect.");
+    public User login(String username, String password) {
+        try {
+            // Authenticate the user
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(username, password)
+            );
+
+            // Fetch the full user object from the database
+            return userRepository.findFirstByUsername(username);
+        } catch (AuthenticationException e) {
+            System.out.println("Authentication failed for user " + username + ": " + e.getMessage());
+            throw new BadCredentialsException("Invalid username or password");
         }
-
-        // Verify password
-        String hashedPassword = userEntity.getPassword();
-        if (!passwordEncoder.matches(credential, hashedPassword)) {
-            throw new BadCredentialsException("Username or password is incorrect.");
-        }
-
-        AbstractAuthenticationToken authRequest = new PreAuthenticatedAuthenticationToken(username, credential);
-        authRequest.setDetails(authenticationDetailsSource.buildDetails(request));
-        authRequest.setAuthenticated(true);
-        Authentication authResult = loadUserDetails(authRequest, username);
-        SecurityContext context = SecurityContextHolder.getContext();
-        context.setAuthentication(authResult);
-        securityContextRepository.saveContext(context, request, response);
-    }
-
-    private UsernamePasswordAuthenticationToken loadUserDetails(Authentication authentication, String username) {
-        List<GrantedAuthority> grantedAuths = new ArrayList<>();
-        grantedAuths.add(new SimpleGrantedAuthority("ROLE_USER"));
-
-        // Use a dummy password or omit it since it's already verified
-        User user = new User(username, "", Collections.unmodifiableCollection(grantedAuths));
-
-        UsernamePasswordAuthenticationToken token = new UsernamePasswordAuthenticationToken(
-                user,
-                null, // No need to pass credentials again
-                grantedAuths
-        );
-        token.setDetails(authentication.getDetails());
-        return token;
     }
 }

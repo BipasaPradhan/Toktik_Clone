@@ -10,4 +10,5 @@ public class SimpleResponseDTO {
 
     private boolean success;
     private String message;
+    private Object data;
 }
