@@ -4,7 +4,6 @@
   import apiClient from '@/plugins/axios';
   import type { VForm } from 'vuetify/components'
   import { useAuthStore } from '@/stores/auth.ts'
-  import Swal from 'sweetalert2'
 
   const router = useRouter()
   const authStore = useAuthStore();

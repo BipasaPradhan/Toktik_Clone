@@ -105,7 +105,7 @@
     videoError.value = '';
 
     const userId = authStore.username || 'default';
-    const response = await axios.get(`/api/videos/details`, {
+    const response = await axios.get(`/videos/details`, {
       params: { videoId, userId },
       headers: { 'X-User-Id': userId },
     });
@@ -189,8 +189,8 @@
       const duration = videoDuration.value || videoDetails.value.duration || 10;
       const timeoutDuration = Math.min(duration * 1000, 30000);
       setTimeout(async () => {
-        await axios.post(`/api/videos/${route.params.id}/views`)
-        const response = await axios.get(`/api/videos/details`, {
+        await axios.post(`/videos/${route.params.id}/views`)
+        const response = await axios.get(`/videos/details`, {
           params: { videoId: route.params.id, userId: authStore.username || 'default' },
           headers: { 'X-User-Id': authStore.username || 'default' },
         })

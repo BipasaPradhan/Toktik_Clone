@@ -234,7 +234,7 @@
     }
     try {
       const userId = authStore.username || '';
-      await axios.delete(`/api/videos/${videoToDelete.value}`, {
+      await axios.delete(`/videos/${videoToDelete.value}`, {
         headers: { 'X-User-Id': userId },
       });
       await fetchMyVideos();
