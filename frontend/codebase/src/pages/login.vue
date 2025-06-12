@@ -30,25 +30,26 @@
         console.log('Login response:', response.data);
 
         if (response.data.success) {
+          console.log('JWT Token:', response.data.data.token)
           localStorage.setItem('jwtToken', response.data.data.token);
           await authStore.login(response.data.data.username, response.data.data.token, response.data.data.role);
           console.log('Navigating to /');
+          errorMessage.value = '';
           await router.push({ path: '/' });
         } else {
           errorMessage.value = response.data.message;
           console.error('Login failed:', errorMessage.value);
-          alert(errorMessage.value);
         }
       } catch (error) {
         errorMessage.value = 'Login failed. Please try again.';
         console.error('Login error:', error);
-        alert(errorMessage.value);
       }
     }
   };
   const reset = () => {
     username.value = ''
     password.value = ''
+    errorMessage.value = ''
     form.value?.resetValidation()
   }
 </script>
@@ -62,6 +63,18 @@
             <v-card-title class="text-center mb-6" style="color: #800020; font-size: 1.5rem;">
               Login to Your Account
             </v-card-title>
+
+            <!-- Error Message Box -->
+            <v-alert
+              v-if="errorMessage"
+              class="mb-6"
+              color="#800020"
+              icon="false"
+              :text="errorMessage"
+              type="error"
+              variant="tonal"
+              @update:model-value="errorMessage = ''"
+            />
 
             <v-form ref="form" v-model="valid">
               <v-text-field

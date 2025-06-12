@@ -156,7 +156,6 @@ services:
     build:
       context: ./video-service
       dockerfile: Dockerfile
-    image: sca2024-t3-p2-404najoenotfound-video-service
     ports:
       - "8081:8081"
     environment:
