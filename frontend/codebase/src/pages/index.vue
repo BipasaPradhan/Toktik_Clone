@@ -40,6 +40,9 @@
             <v-card-text class="video-meta">
               <span>{{ video.userId }}</span> • <span>{{ formatDate(video.uploadTime) }}</span>
             </v-card-text>
+            <v-card-text class="video-meta">
+              Views: {{ video.viewCount }}
+            </v-card-text>
           </v-card>
         </v-col>
       </v-row>
@@ -76,6 +79,7 @@
     userId: string
     uploadTime: string
     status: string
+    viewCount: number
   }
 
   // Reactive state

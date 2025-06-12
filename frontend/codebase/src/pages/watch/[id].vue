@@ -26,7 +26,13 @@
       <v-row v-else>
         <v-col cols="12">
           <div class="video-player-wrapper">
-            <video ref="videoPlayer" class="video-player" controls>
+            <video
+              ref="videoPlayer"
+              class="video-player"
+              controls
+              @loadedmetadata="onLoadedMetadata"
+              @play="handleVideoPlay"
+            >
               <source :src="hlsBlobUrl" type="application/x-mpegURL">
               Your browser does not support the video tag.
             </video>
@@ -34,6 +40,7 @@
           </div>
           <div class="video-details">
             <h2 class="video-title">{{ videoDetails.title || 'No Title Available' }}</h2>
+            <p class="video-meta">Views: {{ videoDetails.viewCount }}</p>
             <p class="video-meta">{{ videoDetails.userId || 'Unknown User' }} • {{ formatDate(videoDetails.uploadTime) }}</p>
             <p class="video-description">{{ videoDetails.description || 'No Description Available' }}</p>
           </div>
@@ -47,11 +54,16 @@
   import { nextTick, onMounted, onUnmounted, ref } from 'vue';
   import { useRoute, useRouter } from 'vue-router';
   import { useAuthStore } from '@/stores/auth';
-  import axios, { AxiosError } from 'axios';
+  import axios from 'axios';
   import Hls from 'hls.js';
   import type { ErrorData } from 'hls.js';
 
-  const route = useRoute();
+  // Define the route params type
+  interface RouteParams {
+    id?: string;
+  }
+
+  const route = useRoute() as { params: RouteParams };
   const router = useRouter();
   const authStore = useAuthStore();
 
@@ -71,6 +83,7 @@
     userId: string;
     uploadTime: string;
     duration: number | null;
+    viewCount: number;
   }>({
     hlsUrl: '',
     hlsKey: '',
@@ -81,108 +94,117 @@
     userId: '',
     uploadTime: '',
     duration: null,
+    viewCount: 0,
   });
 
-  // Fetch video details and setup HLS playback
-  const fetchVideoDetails = async (videoId: number, retries = 5) => {
-    try {
-      loading.value = true;
-      videoError.value = '';
+  const videoDuration = ref<number | null>(null)
+  const videoPlayed = ref(false)
 
-      const userId = authStore.username || 'default';
-      const response = await axios.get(`/api/videos/details`, {
-        params: { videoId, userId },
-        headers: { 'X-User-Id': userId },
+  const fetchVideoDetails = async (videoId: number, retries = 5) => {
+    loading.value = true;
+    videoError.value = '';
+
+    const userId = authStore.username || 'default';
+    const response = await axios.get(`/api/videos/details`, {
+      params: { videoId, userId },
+      headers: { 'X-User-Id': userId },
+    });
+
+    videoDetails.value = {
+      hlsUrl: response.data.hlsUrl || '',
+      hlsKey: response.data.hlsKey || '',
+      thumbnailUrl: response.data.thumbnailUrl || '',
+      convertedUrl: response.data.convertedUrl || null,
+      title: response.data.title || '',
+      description: response.data.description || null,
+      userId: response.data.userId || '',
+      uploadTime: response.data.uploadTime || '',
+      duration: response.data.duration || null,
+      viewCount: response.data.viewCount || 0,
+    };
+
+    if (!videoDetails.value.hlsUrl) {
+      videoError.value = 'No HLS URL provided.';
+      loading.value = false;
+      return;
+    }
+
+    const blob = new Blob([videoDetails.value.hlsUrl], { type: 'application/x-mpegURL' });
+
+    if (hlsBlobUrl.value) URL.revokeObjectURL(hlsBlobUrl.value);
+
+    hlsBlobUrl.value = URL.createObjectURL(blob);
+
+    loading.value = false;
+    await nextTick();
+
+    if (!videoPlayer.value) {
+      videoError.value = 'Video player element not found.';
+      return;
+    }
+
+    if (hlsInstance) {
+      hlsInstance.destroy();
+      hlsInstance = null;
+    }
+
+    if (Hls.isSupported()) {
+      hlsInstance = new Hls();
+      hlsInstance.loadSource(hlsBlobUrl.value);
+      hlsInstance.attachMedia(videoPlayer.value);
+
+      hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
+        videoPlayer.value?.play().catch(console.error);
+        loading.value = false;
       });
 
-      // Update video details
-      videoDetails.value = {
-        hlsUrl: response.data.hlsUrl || '',
-        hlsKey: response.data.hlsKey || '',
-        thumbnailUrl: response.data.thumbnailUrl || '',
-        convertedUrl: response.data.convertedUrl || null,
-        title: response.data.title || '',
-        description: response.data.description || null,
-        userId: response.data.userId || '',
-        uploadTime: response.data.uploadTime || '',
-        duration: response.data.duration || null,
-      };
-
-      if (!videoDetails.value.hlsUrl) {
-        videoError.value = 'No HLS URL provided.';
-        loading.value = false;
-        return;
-      }
-
-      // Create Blob URL from HLS playlist content
-      const blob = new Blob([videoDetails.value.hlsUrl], { type: 'application/x-mpegURL' });
-
-      // Revoke old blob URL if exists
-      if (hlsBlobUrl.value) URL.revokeObjectURL(hlsBlobUrl.value);
-
-      hlsBlobUrl.value = URL.createObjectURL(blob);
-
-      loading.value = false;
-      // Wait for DOM update so videoPlayer ref is ready
-      await nextTick();
-
-      if (!videoPlayer.value) {
-        videoError.value = 'Video player element not found.';
-        return;
-      }
-
-      // Clean up any previous hlsInstance
-      if (hlsInstance) {
-        hlsInstance.destroy();
-        hlsInstance = null;
-      }
-
-      if (Hls.isSupported()) {
-        hlsInstance = new Hls();
-        hlsInstance.loadSource(hlsBlobUrl.value);
-        hlsInstance.attachMedia(videoPlayer.value);
-
-        hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
-          videoPlayer.value?.play().catch(console.error);
-          loading.value = false;
-        });
-
-        hlsInstance.on(Hls.Events.ERROR, (event, data: ErrorData) => {
-          if (data.fatal) {
-            if (data.details.includes('networkError') && retries > 0) {
-              fetchVideoDetails(videoId, retries - 1); // retry on network errors
-            } else {
-              videoError.value = `HLS fatal error: ${data.details}`;
-              loading.value = false;
-            }
+      hlsInstance.on(Hls.Events.ERROR, (event, data: ErrorData) => {
+        if (data.fatal) {
+          if (data.details.includes('networkError') && retries > 0) {
+            fetchVideoDetails(videoId, retries - 1);
+          } else {
+            videoError.value = `HLS fatal error: ${data.details}`;
+            loading.value = false;
           }
-        });
-      } else if (videoPlayer.value.canPlayType('application/vnd.apple.mpegurl')) {
-        videoPlayer.value.src = hlsBlobUrl.value;
-        videoPlayer.value.load();
-        videoPlayer.value.play().catch(console.error);
-        loading.value = false;
-      } else {
-        videoError.value = 'Your browser does not support HLS playback.';
-        loading.value = false;
-      }
-
-      videoPlayer.value.onerror = () => {
-        videoError.value = 'Failed to load video. Check the HLS URL in the console.';
-        loading.value = false;
-      };
-
-    } catch (error) {
-      const axiosError = error as AxiosError;
-      if (axiosError.response?.status === 403 && retries > 0) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        await fetchVideoDetails(videoId, retries - 1);
-      } else {
-        videoError.value = `Failed to fetch video details: ${axiosError.message}`;
-        loading.value = false;
-      }
+        }
+      });
+    } else if (videoPlayer.value.canPlayType('application/vnd.apple.mpegurl')) {
+      videoPlayer.value.src = hlsBlobUrl.value;
+      videoPlayer.value.load();
+      videoPlayer.value.play().catch(console.error);
+      loading.value = false;
+    } else {
+      videoError.value = 'Your browser does not support HLS playback.';
+      loading.value = false;
     }
+
+    videoPlayer.value.onerror = () => {
+      videoError.value = 'Failed to load video. Check the HLS URL in the console.';
+      loading.value = false;
+    };
   };
+
+  const handleVideoPlay = () => {
+    if (!videoPlayed.value) {
+      const duration = videoDuration.value || videoDetails.value.duration || 10;
+      const timeoutDuration = Math.min(duration * 1000, 30000);
+      setTimeout(async () => {
+        await axios.post(`/api/videos/${route.params.id}/views`)
+        const response = await axios.get(`/api/videos/details`, {
+          params: { videoId: route.params.id, userId: authStore.username || 'default' },
+          headers: { 'X-User-Id': authStore.username || 'default' },
+        })
+        videoDetails.value.viewCount = response.data.viewCount || 0
+        videoPlayed.value = true
+      }, timeoutDuration)
+    }
+  }
+
+  const onLoadedMetadata = () => {
+    if (videoPlayer.value) {
+      videoDuration.value = videoPlayer.value.duration
+    }
+  }
 
   onMounted(() => {
     const videoId = (route.params as { id?: string }).id;
@@ -310,7 +332,6 @@
 .toc-logo:hover {
   color: #800020 !important;
 }
-
 </style>
 
 <route lang="json5">

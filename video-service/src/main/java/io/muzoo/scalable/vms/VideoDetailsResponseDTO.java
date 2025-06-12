@@ -7,10 +7,12 @@ import lombok.Data;
 @Data
 @Builder
 public class VideoDetailsResponseDTO {
+    @JsonProperty("id")
+    private final Long id;
     @JsonProperty("hlsUrl")
     private final String hlsUrl;
     @JsonProperty("hlsKey")
-    private final String hlsKey; // Added
+    private final String hlsKey;
     @JsonProperty("thumbnailUrl")
     private final String thumbnailUrl;
     @JsonProperty("convertedUrl")
@@ -27,4 +29,6 @@ public class VideoDetailsResponseDTO {
     private final String uploadTime;
     @JsonProperty("status")
     private final VideoStatus status;
+    @JsonProperty("viewCount")
+    private final int viewCount;
 }

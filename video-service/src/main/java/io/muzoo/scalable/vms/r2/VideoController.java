@@ -85,6 +85,7 @@ public class VideoController {
                     videoInfo.put("thumbnailUrl", videoService.generatePresignedDownloadUrl(v.getThumbnailUrl()));
                     videoInfo.put("userId", v.getUserId());
                     videoInfo.put("uploadTime", v.getUploadTime().toString());
+                    videoInfo.put("viewCount", v.getViewCount());
                     return videoInfo;
                 })
                 .collect(Collectors.toList()));
@@ -106,6 +107,7 @@ public class VideoController {
                             ? videoService.generatePresignedDownloadUrl(video.getChunkedUrl())
                             : null;
                     return VideoDetailsResponseDTO.builder()
+                            .id(video.getId())
                             .hlsUrl(video.getStatus() == VideoStatus.UPLOADED ? video.getHlsPlaylistUrl() : null)
                             .hlsKey(video.getHlsPlaylistUrl())
                             .thumbnailUrl(thumbnailUrl)
@@ -116,6 +118,7 @@ public class VideoController {
                             .duration(video.getDuration())
                             .uploadTime(video.getUploadTime().toString())
                             .status(video.getStatus())
+                            .viewCount(video.getViewCount())
                             .build();
                 })
                 .collect(Collectors.toList());
@@ -159,5 +162,17 @@ public class VideoController {
         if (updates.containsKey("visibility")) video.setVisibility(updates.get("visibility"));
         videoService.getVideoRepository().save(video);
         return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/{id}/views")
+    public ResponseEntity<Void> incrementViewCount(@PathVariable Long id) {
+        videoService.incrementViewCount(id);
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteVideo(@PathVariable Long id, @RequestHeader("X-User-Id") String userId) {
+        videoService.deleteVideo(id, userId);
+        return ResponseEntity.noContent().build();
     }
 }

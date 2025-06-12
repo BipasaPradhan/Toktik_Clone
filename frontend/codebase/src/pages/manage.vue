@@ -38,7 +38,7 @@
                     class="thumbnail"
                     :src="video.thumbnailUrl"
                   />
-                  <div v-else class="thumbnail placeholder-bg"></div>
+                  <div v-else class="thumbnail placeholder-bg" />
                 </div>
               </v-col>
 
@@ -51,7 +51,7 @@
                   {{ video.description }}
                 </v-card-text>
                 <v-card-text class="video-meta">
-                  <span>{{ video.userId }}</span> • <span>{{ formatDate(video.uploadTime) }}</span>
+                  <span>{{ video.userId }}</span> • <span>{{ formatDate(video.uploadTime) }}</span> • <span>Views: {{ video.viewCount }}</span>
                 </v-card-text>
                 <v-card-actions>
                   <v-chip class="ma-1" color="brown lighten-4" text-color="brown darken-4">
@@ -71,6 +71,9 @@
                   <v-list>
                     <v-list-item @click="openEditDialog(video)">
                       <v-list-item-title>Edit</v-list-item-title>
+                    </v-list-item>
+                    <v-list-item @click="() => confirmDelete(video.id)">
+                      <v-list-item-title>Delete</v-list-item-title>
                     </v-list-item>
                   </v-list>
                 </v-menu>
@@ -104,6 +107,18 @@
           </v-card-actions>
         </v-card>
       </v-dialog>
+
+      <!-- Delete Confirmation Dialog -->
+      <v-dialog v-model="deleteDialog" max-width="400px">
+        <v-card>
+          <v-card-title>Confirm Delete</v-card-title>
+          <v-card-text>Are you sure you want to delete this video?</v-card-text>
+          <v-card-actions>
+            <v-btn color="secondary" @click="deleteDialog = false">Cancel</v-btn>
+            <v-btn color="error" @click="deleteVideo">Delete</v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
     </v-container>
   </v-main>
 </template>
@@ -119,14 +134,19 @@
 
   // Define Video interface to match API response
   interface Video {
-    id: number
-    title: string
-    description: string
-    visibility: string
-    thumbnailUrl: string
-    uploadTime: string
-    userId: string
-    status: string
+    id: number;
+    hlsUrl: string | null;
+    hlsKey: string | null;
+    thumbnailUrl: string | null;
+    convertedUrl: string | null;
+    title: string;
+    description: string;
+    visibility: string;
+    uploadTime: string;
+    userId: string;
+    status: string;
+    viewCount: number;
+    objectKey: string;
   }
 
   // Reactive state
@@ -134,33 +154,32 @@
   const loading = ref(true)
   const page = ref(1)
   const editDialog = ref(false)
+  const deleteDialog = ref(false)
   const editedVideo = ref<Partial<Video>>({ id: 0, title: '', description: '', visibility: 'Public' })
+  const videoToDelete = ref<number | null>(null)
   let pollInterval: number | null = null
   const isPolling = ref(false)
 
   // Fetch videos uploaded by the user
   const fetchMyVideos = async () => {
     try {
-      loading.value = true
-      const userId = authStore.username || ''
+      loading.value = true;
+      const userId = authStore.username || '';
       const response = await axios.get(`/api/videos/my`, {
         params: { page: page.value, size: 20 },
         headers: { 'X-User-Id': userId },
-      })
-      console.log('My Videos Response:', JSON.stringify(response.data, null, 2))
-      videos.value = response.data.videos || []
-
-      // Check if any video is in PROCESSING state
-      const hasProcessing = videos.value.some(video => video.status === 'PROCESSING')
-      console.log('Has PROCESSING videos:', hasProcessing);
-      updatePollingState(hasProcessing)
+      });
+      videos.value = response.data.videos || [];
+      console.log('Fetched videos with ids:', videos.value.map(v => v.id));
+      const hasProcessing = videos.value.some(video => video.status === 'PROCESSING');
+      updatePollingState(hasProcessing);
     } catch (error) {
-      const axiosError = error as AxiosError
-      console.error('Error fetching my videos:', axiosError.message, axiosError.response?.data)
+      const axiosError = error as AxiosError;
+      console.error('Error fetching my videos:', axiosError.message, axiosError.response?.data);
     } finally {
-      loading.value = false
+      loading.value = false;
     }
-  }
+  };
 
   // Format upload time
   const formatDate = (dateString: string): string => {
@@ -184,13 +203,50 @@
       }, {
         headers: { 'X-User-Id': userId },
       })
-      await fetchMyVideos() // Refresh the list
+      await fetchMyVideos()
       editDialog.value = false
     } catch (error) {
       const axiosError = error as AxiosError
       console.error('Error updating video:', axiosError.message, axiosError.response?.data)
     }
   }
+
+  // Confirm delete action
+  const confirmDelete = (videoId: number | null) => {
+    console.log('Received videoId in confirmDelete:', videoId);
+    if (videoId === null || videoId === undefined || isNaN(videoId)) {
+      console.error('Invalid videoId:', videoId);
+      alert('Invalid video selected for deletion.');
+      return;
+    }
+    videoToDelete.value = videoId;
+    deleteDialog.value = true;
+  };
+
+  // Delete video
+  const deleteVideo = async () => {
+    console.log('Current videoToDelete.value:', videoToDelete.value);
+    if (videoToDelete.value === null || videoToDelete.value === undefined) {
+      console.error('No video selected for deletion');
+      alert('Please select a video to delete.');
+      deleteDialog.value = false;
+      return;
+    }
+    try {
+      const userId = authStore.username || '';
+      await axios.delete(`/api/videos/${videoToDelete.value}`, {
+        headers: { 'X-User-Id': userId },
+      });
+      await fetchMyVideos();
+    } catch (error) {
+      const axiosError = error as AxiosError;
+      console.error('Error deleting video:', axiosError.message, axiosError.response?.data);
+    } finally {
+      deleteDialog.value = false;
+      videoToDelete.value = null;
+    }
+  };
+
 
   // Navigation methods
   const goToUpload = () => router.push('/upload')
@@ -199,22 +255,20 @@
   // Centralized polling state management
   const updatePollingState = (hasProcessing: boolean) => {
     if (hasProcessing && !isPolling.value) {
-      console.log('Starting polling for PROCESSING videos')
       isPolling.value = true
       pollInterval = setInterval(fetchMyVideos, 30000)
     } else if (!hasProcessing && isPolling.value) {
-      console.log('Stopping polling: No PROCESSING videos')
       clearInterval(pollInterval!)
       pollInterval = null
       isPolling.value = false
     }
   }
 
-  // Trigger refresh after navigation (e.g., from upload)
+  // Trigger refresh after navigation
   const refreshMyVideos = () => {
-    page.value = 1 // Reset to first page
-    videos.value = [] // Clear current videos
-    fetchMyVideos() // Fetch fresh data
+    page.value = 1
+    videos.value = []
+    fetchMyVideos()
   }
 
   // Fetch videos on mount
@@ -226,7 +280,7 @@
 
   onUnmounted(() => {
     window.removeEventListener('refreshMyVideos', refreshMyVideos);
-    delete window.manageRefresh; // Clean up
+    delete window.manageRefresh;
     if (pollInterval) {
       clearInterval(pollInterval);
       pollInterval = null;
@@ -257,7 +311,6 @@
   display: flex;
   gap: 12px;
 }
-
 
 .upload-btn {
   color: #2b2119 !important;
@@ -313,7 +366,6 @@
 .toc-logo:hover {
   color: #800020 !important;
 }
-
 </style>
 
 <route lang="json5">

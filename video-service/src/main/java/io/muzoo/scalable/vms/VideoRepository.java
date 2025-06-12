@@ -1,6 +1,8 @@
 package io.muzoo.scalable.vms;
 
+import io.lettuce.core.dynamic.annotation.Param;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
@@ -19,4 +21,10 @@ public interface VideoRepository extends JpaRepository<Video, Long> {
 
     @Query(value = "SELECT * FROM vms_video_data WHERE id = :id", nativeQuery = true)
     Optional<Video> findByIdNative(Long id);
+
+    @Modifying
+    @Query("UPDATE Video v SET v.viewCount = v.viewCount + 1 WHERE v.id = :id")
+    void incrementViewCount(@Param("id") Long id);
+
+    Optional<Video> findByIdAndUserId(Long id, String userId);
 }

@@ -10,6 +10,7 @@ import jakarta.transaction.Transactional;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.rest.webmvc.ResourceNotFoundException;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -173,6 +174,8 @@ public class VideoService {
                 .userId(video.getUserId())
                 .duration(video.getDuration())
                 .uploadTime(video.getUploadTime() != null ? video.getUploadTime().toString() : null)
+                .status(video.getStatus())
+                .viewCount(video.getViewCount())
                 .build();
 
         System.out.println("Returning DTO with hlsKey: " + responseDTO.getHlsKey());
@@ -220,5 +223,16 @@ public class VideoService {
         }
         int offset = (page - 1) * size;
         return videoRepository.findByUserIdAndStatus(userId, size, offset);
+    }
+
+    @Transactional
+    public void incrementViewCount(Long videoId) {
+        videoRepository.incrementViewCount(videoId);
+    }
+
+    public void deleteVideo(Long id, String userId) {
+        Video video = videoRepository.findByIdAndUserId(id, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Video not found"));
+        videoRepository.delete(video);
     }
 }

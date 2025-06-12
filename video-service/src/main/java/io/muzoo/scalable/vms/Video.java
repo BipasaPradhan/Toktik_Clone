@@ -50,6 +50,9 @@ public class Video {
     @Column(name = "duration")
     private Double duration;
 
+    @Column(name = "view_count", nullable = false, columnDefinition = "INT DEFAULT 0")
+    private int viewCount = 0;
+
     public Video(String userId, String title, String description, String objectKey, VideoStatus status, String visibility) {
         this.userId = userId;
         this.title = title;
@@ -58,5 +61,6 @@ public class Video {
         this.status = status;
         this.visibility = visibility;
         this.uploadTime = LocalDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh"));
+        this.viewCount = 0;
     }
 }
