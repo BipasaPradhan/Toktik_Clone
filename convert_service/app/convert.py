@@ -3,11 +3,23 @@ from celery import Celery
 import os
 import shutil
 from .s3_client import S3Client
+from botocore.exceptions import ClientError
 
 app = Celery('convert', broker='redis://redis:6379/0', backend='redis://redis:6379/0')
 s3_client = S3Client()
 
-@app.task(name='convert.convert_video', queue='convert_queue')
+@app.task(
+    name='convert.convert_video',
+    queue='convert_queue',
+    autoretry_for=(
+        ClientError, 
+        ffmpeg.Error,  
+        OSError,      
+    ),
+    retry_kwargs={'max_retries': 3, 'countdown': 30},
+    retry_backoff=True,
+    retry_jitter=True
+)
 def convert_video(video_id, s3_key, converted_key, user_id):
     # temporary local paths within the pod's ephemeral storage
     temp_dir = f"/tmp/video_convert/{video_id}"

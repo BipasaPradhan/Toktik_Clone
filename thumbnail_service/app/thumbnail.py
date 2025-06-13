@@ -8,7 +8,18 @@ from botocore.exceptions import ClientError
 app = Celery('thumbnail', broker='redis://redis:6379/0', backend='redis://redis:6379/0')
 s3_client = S3Client()
 
-@app.task(name='thumbnail.extract_thumbnail', queue='thumbnail_queue')
+@app.task(
+    name='thumbnail.extract_thumbnail', 
+    queue='thumbnail_queue',
+    autoretry_for=(
+        ClientError,  
+        ffmpeg.Error,  
+        OSError,      
+    ),
+    retry_kwargs={'max_retries': 3, 'countdown': 30},
+    retry_backoff=True,
+    retry_jitter=True
+)
 def extract_thumbnail(converted_key, user_id, thumbnail_key):
     video_id = os.path.basename(os.path.dirname(thumbnail_key))
     print(f"Starting thumbnail extraction for video_id: {video_id}, user_id: {user_id}")
