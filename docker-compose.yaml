@@ -152,25 +152,25 @@ services:
     networks:
       - redis_network
 
-  video-service:
-    build:
-      context: ./video-service
-      dockerfile: Dockerfile
-    ports:
-      - "8081:8081"
-    environment:
-      - SPRING_DATASOURCE_URL=jdbc:mariadb://maria-db:3306/toctik
-      - SPRING_DATASOURCE_USERNAME=root
-      - SPRING_DATASOURCE_PASSWORD=rootpass
-      - SPRING_REDIS_HOST=redis
-      - SPRING_REDIS_PORT=6379
-    depends_on:
-      maria-db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - redis_network
+#  video-service:
+#    build:
+#      context: ./video-service
+#      dockerfile: Dockerfile
+#    ports:
+#      - "8081:8081"
+#    environment:
+#      - SPRING_DATASOURCE_URL=jdbc:mariadb://maria-db:3306/toctik
+#      - SPRING_DATASOURCE_USERNAME=root
+#      - SPRING_DATASOURCE_PASSWORD=rootpass
+#      - SPRING_REDIS_HOST=redis
+#      - SPRING_REDIS_PORT=6379
+#    depends_on:
+#      maria-db:
+#        condition: service_healthy
+#      redis:
+#        condition: service_healthy
+#    networks:
+#      - redis_network
 
 networks:
   redis_network:
