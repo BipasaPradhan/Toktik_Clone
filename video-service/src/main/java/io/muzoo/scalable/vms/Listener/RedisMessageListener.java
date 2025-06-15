@@ -1,4 +1,4 @@
-package io.muzoo.scalable.vms.redis;
+package io.muzoo.scalable.vms.Listener;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -31,7 +31,7 @@ public class RedisMessageListener implements MessageListener {
             Double duration = data.get("duration") != null ? Double.parseDouble(data.get("duration")) : null;
 
             logger.info("Received video:processed message: video_id={}, hlsPlaylistUrl={}, thumbnailUrl={}, convertedUrl={} duration={}",
-                    videoId, hlsPlaylistUrl, thumbnailUrl, duration);
+                    videoId, hlsPlaylistUrl, thumbnailUrl, convertedUrl, duration);
 
             // Update video metadata
             videoService.updateVideoMetadata(videoId, hlsPlaylistUrl, thumbnailUrl, convertedUrl, duration);

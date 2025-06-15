@@ -10,7 +10,9 @@ import jakarta.transaction.Transactional;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.rest.webmvc.ResourceNotFoundException;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -36,6 +38,7 @@ public class VideoService {
     @Getter
     private final VideoRepository videoRepository;
     private final RedisPublisher redisPublisher;
+    private final RedisTemplate<String, Object> redisTemplate;
 
     @Value("${cloudflare.r2.bucket-name}")
     private String bucketName;
@@ -227,7 +230,28 @@ public class VideoService {
 
     @Transactional
     public void incrementViewCount(Long videoId) {
+        // Increment view count in Redis
+        String key = "video:" + videoId + ":views";
+        Long viewCount = redisTemplate.opsForValue().increment(key);
+
+        Map<String, String> message = Map.of(
+                "video_id", videoId.toString(),
+                "view_count", viewCount.toString()
+        );
+        redisPublisher.publish("view:count", message);
         videoRepository.incrementViewCount(videoId);
+    }
+
+    @Scheduled(fixedRate = 60000)
+    @Transactional
+    public void syncViewCountsToDatabase() {
+        redisTemplate.keys("video:*:views").forEach(key -> {
+            Long videoId = Long.parseLong(key.split(":")[1]);
+            Long viewCount = (Long) redisTemplate.opsForValue().get(key);
+            if (viewCount != null) {
+                videoRepository.updateViewCount(videoId, viewCount);
+            }
+        });
     }
 
     public void deleteVideo(Long id, String userId) {
