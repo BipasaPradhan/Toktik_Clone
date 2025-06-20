@@ -57,11 +57,16 @@
   import axios from 'axios';
   import Hls from 'hls.js';
   import type { ErrorData } from 'hls.js';
+  import { Client } from '@stomp/stompjs';
+  import SockJS from 'sockjs-client';
 
   // Define the route params type
   interface RouteParams {
     id?: string;
   }
+
+  // Initialize STOMP client
+  const stompClient = ref<Client | null>(null);
 
   const route = useRoute() as { params: RouteParams };
   const router = useRouter();
@@ -184,19 +189,18 @@
     };
   };
 
-  const handleVideoPlay = () => {
+  const handleVideoPlay = async () => {
     if (!videoPlayed.value) {
       const duration = videoDuration.value || videoDetails.value.duration || 10;
       const timeoutDuration = Math.min(duration * 1000, 30000);
       setTimeout(async () => {
-        await axios.post(`/videos/${route.params.id}/views`)
-        const response = await axios.get(`/videos/details`, {
-          params: { videoId: route.params.id, userId: authStore.username || 'default' },
-          headers: { 'X-User-Id': authStore.username || 'default' },
-        })
-        videoDetails.value.viewCount = response.data.viewCount || 0
-        videoPlayed.value = true
-      }, timeoutDuration)
+        try {
+          await axios.post(`/videos/${route.params.id}/views`);
+          videoPlayed.value = true;
+        } catch (error) {
+          console.error('Error incrementing view count:', error);
+        }
+      }, timeoutDuration);
     }
   }
 
@@ -205,11 +209,45 @@
       videoDuration.value = videoPlayer.value.duration
     }
   }
+  const connectWebSocket = (videoId: number) => {
+    const socket = new SockJS('/ws');
+    stompClient.value = new Client({
+      webSocketFactory: () => socket,
+      reconnectDelay: 5000,
+      debug: str => console.log('STOMP:', str),
+    })
+
+    stompClient.value.onConnect = () => {
+      console.log('Connected to WebSocket');
+      stompClient.value?.subscribe(`/topic/views/${videoId}`, message => {
+        const viewCount = parseInt(message.body);
+        videoDetails.value.viewCount = viewCount;
+      });
+    };
+
+    stompClient.value.onStompError = frame => {
+      console.error('STOMP error:', frame);
+      videoError.value = 'Failed to connect to real-time updates. Please refresh.';
+    };
+
+    stompClient.value.activate();
+  }
+
+  // Clean up WebSocket connection
+  const disconnectWebSocket = () => {
+    if (stompClient.value) {
+      stompClient.value.deactivate();
+      stompClient.value = null;
+      console.log('Disconnected from WebSocket')
+    }
+  }
+
 
   onMounted(() => {
     const videoId = (route.params as { id?: string }).id;
     if (videoId) {
       fetchVideoDetails(parseInt(videoId));
+      connectWebSocket(parseInt(videoId));
     } else {
       loading.value = false;
       videoError.value = 'No video ID provided.';
@@ -228,6 +266,7 @@
       hlsInstance.destroy();
       hlsInstance = null;
     }
+    disconnectWebSocket();
   });
 
   const formatDate = (dateString: string): string => {

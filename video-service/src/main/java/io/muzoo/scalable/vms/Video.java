@@ -50,7 +50,7 @@ public class Video {
     @Column(name = "duration")
     private Double duration;
 
-    @Column(name = "view_count", nullable = false, columnDefinition = "LONG DEFAULT 0")
+    @Column(name = "view_count", nullable = false, columnDefinition = "BIGINT DEFAULT 0")
     private Long viewCount = 0L;
 
     public Video(String userId, String title, String description, String objectKey, VideoStatus status, String visibility) {

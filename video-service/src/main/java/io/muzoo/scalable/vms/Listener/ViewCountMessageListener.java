@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.connection.Message;
+import org.springframework.data.redis.connection.MessageListener;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
@@ -14,8 +15,8 @@ import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
-public class ViewCountMessageListener {
-    private static final Logger logger = LoggerFactory.getLogger(RedisMessageListener.class);
+public class ViewCountMessageListener implements MessageListener {
+    private static final Logger logger = LoggerFactory.getLogger(ViewCountMessageListener.class);
     private final ObjectMapper objectMapper;
     private final SimpMessagingTemplate messagingTemplate;
 

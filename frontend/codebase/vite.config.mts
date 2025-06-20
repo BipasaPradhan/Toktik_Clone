@@ -91,6 +91,11 @@ export default defineConfig({
         target: 'http://localhost:8081',
         rewrite: path => path.replace(/^\/videos/, '/api/videos'),
       },
+      '/ws': {
+        target: 'http://localhost:8081',
+        changeOrigin: true,
+        ws: true,
+      },
     },
   },
   css: {
