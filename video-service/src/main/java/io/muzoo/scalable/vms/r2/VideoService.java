@@ -125,11 +125,6 @@ public class VideoService {
         video.setChunkedUrl(convertedUrl);
         video.setDuration(duration);
         video.setStatus(VideoStatus.UPLOADED);
-        try {
-            Thread.sleep(10000);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
         Video updatedVideo = videoRepository.save(video);
         System.out.println("Updated video metadata for ID: " + videoId + ", status: " + VideoStatus.UPLOADED);
         return updatedVideo;
@@ -238,18 +233,30 @@ public class VideoService {
                 "video_id", videoId.toString(),
                 "view_count", viewCount.toString()
         );
+        System.out.println("Publishing view count to Redis: video_id=" + videoId + ", view_count=" + viewCount);
         redisPublisher.publish("view:count", message);
-        videoRepository.incrementViewCount(videoId);
+        try {
+            videoRepository.incrementViewCount(videoId);
+            System.out.println("Updated database view count for videoId=" + videoId);
+        } catch (Exception e) {
+            System.out.println("Failed to update database view count for videoId=" + videoId + ": " + e.getMessage());
+        }
     }
 
     @Scheduled(fixedRate = 60000)
     @Transactional
     public void syncViewCountsToDatabase() {
+        System.out.println("Syncing view counts to database");
         redisTemplate.keys("video:*:views").forEach(key -> {
             Long videoId = Long.parseLong(key.split(":")[1]);
             Long viewCount = (Long) redisTemplate.opsForValue().get(key);
             if (viewCount != null) {
-                videoRepository.updateViewCount(videoId, viewCount);
+                try {
+                    videoRepository.updateViewCount(videoId, viewCount);
+                    System.out.println("Synced view count for videoId=" + videoId + ": " + viewCount);
+                } catch (Exception e) {
+                    System.out.println("Failed to sync view count for videoId=" + videoId + ": " + e.getMessage());
+                }
             }
         });
     }

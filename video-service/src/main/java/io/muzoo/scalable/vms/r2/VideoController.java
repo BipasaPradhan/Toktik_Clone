@@ -166,7 +166,9 @@ public class VideoController {
 
     @PostMapping("/{id}/views")
     public ResponseEntity<Void> incrementViewCount(@PathVariable Long id) {
+        System.out.println("Received request to increment view count for videoId=" + id);
         videoService.incrementViewCount(id);
+        System.out.println("Incremented view count for videoId=" + id);
         return ResponseEntity.ok().build();
     }
 

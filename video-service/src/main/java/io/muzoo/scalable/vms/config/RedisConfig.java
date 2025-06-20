@@ -2,6 +2,7 @@ package io.muzoo.scalable.vms.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.muzoo.scalable.vms.Listener.RedisMessageListener;
+import io.muzoo.scalable.vms.Listener.ViewCountMessageListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
@@ -29,13 +30,11 @@ public class RedisConfig {
 
     @Bean
     public RedisMessageListenerContainer redisContainer(RedisConnectionFactory connectionFactory,
-                                                        MessageListenerAdapter listenerAdapter,
+                                                        MessageListenerAdapter videoListenerAdapter,
                                                         MessageListenerAdapter viewCountListenerAdapter) {
         RedisMessageListenerContainer container = new RedisMessageListenerContainer();
         container.setConnectionFactory(connectionFactory);
-        //video processed
-        container.addMessageListener(listenerAdapter, new PatternTopic("video:processed"));
-        //view count
+        container.addMessageListener(videoListenerAdapter, new PatternTopic("video:processed"));
         container.addMessageListener(viewCountListenerAdapter, new PatternTopic("view:count"));
         container.setErrorHandler(e -> logger.error("Error in Redis listener container: {}", e.getMessage(), e));
         return container;
@@ -47,13 +46,12 @@ public class RedisConfig {
     }
 
     @Bean
-    public MessageListenerAdapter listenerAdapter(RedisMessageListener videoListener) {
+    public MessageListenerAdapter videoListenerAdapter(RedisMessageListener videoListener) {
         return new MessageListenerAdapter(videoListener, "onMessage");
     }
 
     @Bean
-    public MessageListenerAdapter viewCountListenerAdapter(RedisMessageListener viewListener) {
+    public MessageListenerAdapter viewCountListenerAdapter(ViewCountMessageListener viewListener) {
         return new MessageListenerAdapter(viewListener, "onMessage");
     }
-
 }

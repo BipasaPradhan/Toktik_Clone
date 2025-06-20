@@ -20,18 +20,17 @@ public class ViewCountMessageListener implements MessageListener {
     private final ObjectMapper objectMapper;
     private final SimpMessagingTemplate messagingTemplate;
 
-    public void onMessage(Message message, byte[] pattern)  {
-        try{
-            // Deserialize the message body (JSON) into a Map
+    @Override
+    public void onMessage(Message message, byte[] pattern) {
+        logger.info("Received Redis message on channel: {}", new String(pattern));
+        try {
             Map<String, String> data = objectMapper.readValue(message.getBody(), new TypeReference<>() {});
             Long videoId = Long.parseLong(data.get("video_id"));
             Long viewCount = Long.parseLong(data.get("view_count"));
             logger.info("Received view:count message: video_id={}, view_count={}", videoId, viewCount);
-
-            // Broadcast to WebSocket clients subscribed to this video
             messagingTemplate.convertAndSend("/topic/views/" + videoId, viewCount);
-        }
-        catch (Exception e) {
+            logger.info("Sent view count to WebSocket: /topic/views/{}, view_count={}", videoId, viewCount);
+        } catch (Exception e) {
             logger.error("Error processing view:count message: {}", e.getMessage(), e);
         }
     }
