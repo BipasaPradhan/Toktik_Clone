@@ -31,4 +31,6 @@ public class VideoDetailsResponseDTO {
     private final VideoStatus status;
     @JsonProperty("viewCount")
     private final Long viewCount;
+    @JsonProperty("likeCount")
+    private final Long likeCount;
 }

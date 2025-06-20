@@ -1,10 +1,7 @@
 package io.muzoo.scalable.vms.r2;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.muzoo.scalable.vms.Video;
-import io.muzoo.scalable.vms.VideoRepository;
-import io.muzoo.scalable.vms.VideoStatus;
-import io.muzoo.scalable.vms.VideoDetailsResponseDTO;
+import io.muzoo.scalable.vms.*;
 import io.muzoo.scalable.vms.redis.RedisPublisher;
 import jakarta.transaction.Transactional;
 import lombok.Getter;
@@ -37,6 +34,7 @@ public class VideoService {
     private final S3Client s3Client;
     @Getter
     private final VideoRepository videoRepository;
+    private final VideoLikeRepository videoLikeRepository;
     private final RedisPublisher redisPublisher;
     private final RedisTemplate<String, Object> redisTemplate;
 
@@ -265,5 +263,32 @@ public class VideoService {
         Video video = videoRepository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Video not found"));
         videoRepository.delete(video);
+    }
+
+    @Transactional
+    public boolean toggleLike(Long videoId, Long userId) {
+        VideoLike existingLike = videoLikeRepository.findByVideoIdAndUserId(videoId, userId).orElse(null);
+        if (existingLike != null) {
+            videoLikeRepository.delete(existingLike);
+            long likeCount = videoLikeRepository.countByVideoId(videoId);
+            Map<String, String> message = Map.of("videoId", videoId.toString(), "likeCount", String.valueOf(likeCount));
+            redisPublisher.publish("like:count", message); // Publish unliked
+            return false;
+        } else {
+            Video video = videoRepository.findById(videoId)
+                    .orElseThrow(() -> new RuntimeException("Video not found"));
+            VideoLike like = new VideoLike();
+            like.setVideo(video);
+            like.setUserId(userId);
+            videoLikeRepository.save(like);
+            long likeCount = videoLikeRepository.countByVideoId(videoId);
+            Map<String, String> message = Map.of("videoId", videoId.toString(), "likeCount", String.valueOf(likeCount));
+            redisPublisher.publish("like:count", message); // Publish liked
+            return true;
+        }
+    }
+
+    public long getLikeCount(Long videoId) {
+        return videoLikeRepository.countByVideoId(videoId);
     }
 }

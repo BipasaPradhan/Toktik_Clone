@@ -1,6 +1,7 @@
 package io.muzoo.scalable.vms.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.muzoo.scalable.vms.Listener.LikeCountMessageListener;
 import io.muzoo.scalable.vms.Listener.RedisMessageListener;
 import io.muzoo.scalable.vms.Listener.ViewCountMessageListener;
 import org.slf4j.Logger;
@@ -53,5 +54,10 @@ public class RedisConfig {
     @Bean
     public MessageListenerAdapter viewCountListenerAdapter(ViewCountMessageListener viewListener) {
         return new MessageListenerAdapter(viewListener, "onMessage");
+    }
+
+    @Bean
+    public MessageListenerAdapter likeCountListenerAdapter(LikeCountMessageListener likeListener) { // Add this
+        return new MessageListenerAdapter(likeListener, "onMessage");
     }
 }
