@@ -51,7 +51,7 @@
                   {{ video.description }}
                 </v-card-text>
                 <v-card-text class="video-meta">
-                  <span>{{ video.userId }}</span> • <span>{{ formatDate(video.uploadTime) }}</span> • <span>Views: {{ video.viewCount }}</span>
+                  <span>{{ video.userId }}</span> • <span>{{ formatDate(video.uploadTime) }}</span> • <span>Views: {{ video.viewCount }}</span> • <span>Likes: {{ video.likeCount || 0 }}</span>
                 </v-card-text>
                 <v-card-actions>
                   <v-chip class="ma-1" color="brown lighten-4" text-color="brown darken-4">
@@ -147,6 +147,7 @@
     status: string;
     viewCount: number;
     objectKey: string;
+    likeCount?: number;
   }
 
   // Reactive state
@@ -246,7 +247,6 @@
       videoToDelete.value = null;
     }
   };
-
 
   // Navigation methods
   const goToUpload = () => router.push('/upload')
