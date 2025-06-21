@@ -66,7 +66,8 @@ export default defineConfig({
       'unplugin-vue-router/data-loaders/basic',
     ],
   },
-  define: { 'process.env': {} },
+  define: { 'process.env': {},
+    global: 'globalThis' },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
@@ -90,6 +91,11 @@ export default defineConfig({
       '/videos': {
         target: 'http://localhost:8081',
         rewrite: path => path.replace(/^\/videos/, '/api/videos'),
+      },
+      '/ws': {
+        target: 'http://localhost:8081',
+        changeOrigin: true,
+        ws: true,
       },
     },
   },

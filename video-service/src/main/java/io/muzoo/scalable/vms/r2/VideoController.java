@@ -86,6 +86,7 @@ public class VideoController {
                     videoInfo.put("userId", v.getUserId());
                     videoInfo.put("uploadTime", v.getUploadTime().toString());
                     videoInfo.put("viewCount", v.getViewCount());
+                    videoInfo.put("likeCount", videoService.getLikeCount(v.getId()));
                     return videoInfo;
                 })
                 .collect(Collectors.toList()));
@@ -119,6 +120,7 @@ public class VideoController {
                             .uploadTime(video.getUploadTime().toString())
                             .status(video.getStatus())
                             .viewCount(video.getViewCount())
+                            .likeCount(videoService.getLikeCount(video.getId()))
                             .build();
                 })
                 .collect(Collectors.toList());
@@ -166,7 +168,9 @@ public class VideoController {
 
     @PostMapping("/{id}/views")
     public ResponseEntity<Void> incrementViewCount(@PathVariable Long id) {
+        System.out.println("Received request to increment view count for videoId=" + id);
         videoService.incrementViewCount(id);
+        System.out.println("Incremented view count for videoId=" + id);
         return ResponseEntity.ok().build();
     }
 
@@ -174,5 +178,17 @@ public class VideoController {
     public ResponseEntity<Void> deleteVideo(@PathVariable Long id, @RequestHeader("X-User-Id") String userId) {
         videoService.deleteVideo(id, userId);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{id}/like")
+    public ResponseEntity<Map<String, Object>> toggleLike(
+            @PathVariable Long id,
+            @RequestHeader("X-User-Id") Long userId) {
+        boolean isLiked = videoService.toggleLike(id, userId);
+        long likeCount = videoService.getLikeCount(id);
+        Map<String, Object> response = new HashMap<>();
+        response.put("isLiked", isLiked);
+        response.put("likeCount", likeCount);
+        return ResponseEntity.ok(response);
     }
 }

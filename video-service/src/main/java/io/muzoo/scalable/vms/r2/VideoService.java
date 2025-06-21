@@ -1,16 +1,15 @@
 package io.muzoo.scalable.vms.r2;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.muzoo.scalable.vms.Video;
-import io.muzoo.scalable.vms.VideoRepository;
-import io.muzoo.scalable.vms.VideoStatus;
-import io.muzoo.scalable.vms.VideoDetailsResponseDTO;
+import io.muzoo.scalable.vms.*;
 import io.muzoo.scalable.vms.redis.RedisPublisher;
 import jakarta.transaction.Transactional;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.rest.webmvc.ResourceNotFoundException;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -35,7 +34,9 @@ public class VideoService {
     private final S3Client s3Client;
     @Getter
     private final VideoRepository videoRepository;
+    private final VideoLikeRepository videoLikeRepository;
     private final RedisPublisher redisPublisher;
+    private final RedisTemplate<String, Object> redisTemplate;
 
     @Value("${cloudflare.r2.bucket-name}")
     private String bucketName;
@@ -122,11 +123,6 @@ public class VideoService {
         video.setChunkedUrl(convertedUrl);
         video.setDuration(duration);
         video.setStatus(VideoStatus.UPLOADED);
-        try {
-            Thread.sleep(10000);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
         Video updatedVideo = videoRepository.save(video);
         System.out.println("Updated video metadata for ID: " + videoId + ", status: " + VideoStatus.UPLOADED);
         return updatedVideo;
@@ -227,12 +223,72 @@ public class VideoService {
 
     @Transactional
     public void incrementViewCount(Long videoId) {
-        videoRepository.incrementViewCount(videoId);
+        // Increment view count in Redis
+        String key = "video:" + videoId + ":views";
+        Long viewCount = redisTemplate.opsForValue().increment(key);
+
+        Map<String, String> message = Map.of(
+                "video_id", videoId.toString(),
+                "view_count", viewCount.toString()
+        );
+        System.out.println("Publishing view count to Redis: video_id=" + videoId + ", view_count=" + viewCount);
+        redisPublisher.publish("view:count", message);
+        try {
+            videoRepository.incrementViewCount(videoId);
+            System.out.println("Updated database view count for videoId=" + videoId);
+        } catch (Exception e) {
+            System.out.println("Failed to update database view count for videoId=" + videoId + ": " + e.getMessage());
+        }
+    }
+
+    @Scheduled(fixedRate = 60000)
+    @Transactional
+    public void syncViewCountsToDatabase() {
+        System.out.println("Syncing view counts to database");
+        redisTemplate.keys("video:*:views").forEach(key -> {
+            Long videoId = Long.parseLong(key.split(":")[1]);
+            Long viewCount = (Long) redisTemplate.opsForValue().get(key);
+            if (viewCount != null) {
+                try {
+                    videoRepository.updateViewCount(videoId, viewCount);
+                    System.out.println("Synced view count for videoId=" + videoId + ": " + viewCount);
+                } catch (Exception e) {
+                    System.out.println("Failed to sync view count for videoId=" + videoId + ": " + e.getMessage());
+                }
+            }
+        });
     }
 
     public void deleteVideo(Long id, String userId) {
         Video video = videoRepository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Video not found"));
         videoRepository.delete(video);
+    }
+
+    @Transactional
+    public boolean toggleLike(Long videoId, Long userId) {
+        VideoLike existingLike = videoLikeRepository.findByVideoIdAndUserId(videoId, userId).orElse(null);
+        if (existingLike != null) {
+            videoLikeRepository.delete(existingLike);
+            long likeCount = videoLikeRepository.countByVideoId(videoId);
+            Map<String, String> message = Map.of("videoId", videoId.toString(), "likeCount", String.valueOf(likeCount));
+            redisPublisher.publish("like:count", message); // Publish unliked
+            return false;
+        } else {
+            Video video = videoRepository.findById(videoId)
+                    .orElseThrow(() -> new RuntimeException("Video not found"));
+            VideoLike like = new VideoLike();
+            like.setVideo(video);
+            like.setUserId(userId);
+            videoLikeRepository.save(like);
+            long likeCount = videoLikeRepository.countByVideoId(videoId);
+            Map<String, String> message = Map.of("videoId", videoId.toString(), "likeCount", String.valueOf(likeCount));
+            redisPublisher.publish("like:count", message); // Publish liked
+            return true;
+        }
+    }
+
+    public long getLikeCount(Long videoId) {
+        return videoLikeRepository.countByVideoId(videoId);
     }
 }

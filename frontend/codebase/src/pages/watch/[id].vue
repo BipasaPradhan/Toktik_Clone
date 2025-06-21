@@ -57,11 +57,16 @@
   import axios from 'axios';
   import Hls from 'hls.js';
   import type { ErrorData } from 'hls.js';
+  import { Client } from '@stomp/stompjs';
+  import SockJS from 'sockjs-client';
 
   // Define the route params type
   interface RouteParams {
     id?: string;
   }
+
+  // Initialize STOMP client
+  const stompClient = ref<Client | null>(null);
 
   const route = useRoute() as { params: RouteParams };
   const router = useRouter();
@@ -99,6 +104,9 @@
 
   const videoDuration = ref<number | null>(null)
   const videoPlayed = ref(false)
+  const watchTime = ref(0);
+  const minWatchTime = 5; // Minimum watch time for videos >= 5s
+  const minWatchPercentage = 0.9; // 90% for short videos
 
   const fetchVideoDetails = async (videoId: number, retries = 5) => {
     loading.value = true;
@@ -154,7 +162,6 @@
       hlsInstance.attachMedia(videoPlayer.value);
 
       hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
-        videoPlayer.value?.play().catch(console.error);
         loading.value = false;
       });
 
@@ -185,31 +192,101 @@
   };
 
   const handleVideoPlay = () => {
-    if (!videoPlayed.value) {
-      const duration = videoDuration.value || videoDetails.value.duration || 10;
-      const timeoutDuration = Math.min(duration * 1000, 30000);
-      setTimeout(async () => {
-        await axios.post(`/videos/${route.params.id}/views`)
-        const response = await axios.get(`/videos/details`, {
-          params: { videoId: route.params.id, userId: authStore.username || 'default' },
-          headers: { 'X-User-Id': authStore.username || 'default' },
-        })
-        videoDetails.value.viewCount = response.data.viewCount || 0
-        videoPlayed.value = true
-      }, timeoutDuration)
+    if (!videoPlayed.value && videoPlayer.value) {
+      console.log(`Video playback started for videoId=${route.params.id}`);
+      const startTime = Date.now();
+      let effectiveMinWatchTime = minWatchTime;
+      if (videoDuration.value && videoDuration.value < minWatchTime) {
+        effectiveMinWatchTime = videoDuration.value * minWatchPercentage;
+        console.log(`Short video detected: duration=${videoDuration.value}s, effectiveMinWatchTime=${effectiveMinWatchTime}s`);
+      }
+
+      const checkWatchTime = setInterval(async () => {
+        if (videoPlayer.value && !videoPlayer.value.paused) {
+          watchTime.value = (Date.now() - startTime) / 1000;
+          if (watchTime.value >= effectiveMinWatchTime) {
+            clearInterval(checkWatchTime);
+            try {
+              console.log(`Incrementing view count for videoId=${route.params.id} after ${watchTime.value}s`);
+              await axios.post(`/videos/${route.params.id}/views`);
+              console.log(`Successfully incremented view for videoId=${route.params.id}`);
+              videoPlayed.value = true;
+            } catch (error) {
+              console.error(`Error incrementing view count for videoId=${route.params.id}:`, error);
+            }
+          }
+        }
+      }, 1000);
+
+      // Handle video end for short videos
+      videoPlayer.value.addEventListener('ended', () => {
+        clearInterval(checkWatchTime);
+        if (!videoPlayed.value && watchTime.value >= effectiveMinWatchTime) {
+          axios.post(`/videos/${route.params.id}/views`)
+            .then(() => {
+              console.log(`Incremented view count on video end for videoId=${route.params.id}`);
+              videoPlayed.value = true;
+            })
+            .catch(error => {
+              console.error(`Error incrementing view count on end for videoId=${route.params.id}:`, error);
+            });
+        }
+      }, { once: true });
     }
-  }
+  };
 
   const onLoadedMetadata = () => {
     if (videoPlayer.value) {
       videoDuration.value = videoPlayer.value.duration
     }
   }
+  const connectWebSocket = (videoId: number) => {
+    const socket = new SockJS('/ws');
+    stompClient.value = new Client({
+      webSocketFactory: () => socket,
+      reconnectDelay: 5000,
+      debug: str => console.log('STOMP:', str),
+    })
+
+    stompClient.value.onConnect = () => {
+      console.log('Connected to WebSocket');
+      stompClient.value?.subscribe(`/topic/views/${videoId}`, message => {
+        const viewCount = parseInt(message.body);
+        videoDetails.value.viewCount = viewCount;
+      });
+    };
+
+    stompClient.value.onStompError = frame => {
+      console.error('STOMP error:', frame);
+      videoError.value = 'Failed to connect to real-time updates. Please refresh.';
+    };
+
+    stompClient.value.activate();
+  }
+
+  // Clean up WebSocket connection
+  const disconnectWebSocket = () => {
+    if (stompClient.value) {
+      stompClient.value.deactivate();
+      stompClient.value = null;
+      console.log('Disconnected from WebSocket')
+    }
+  }
+
 
   onMounted(() => {
     const videoId = (route.params as { id?: string }).id;
     if (videoId) {
       fetchVideoDetails(parseInt(videoId));
+      connectWebSocket(parseInt(videoId));
+
+      // Wait for videoPlayer element
+      nextTick(() => {
+        if (videoPlayer.value) {
+          videoPlayer.value.addEventListener('play', handleVideoPlay);
+          videoPlayer.value.addEventListener('loadedmetadata', onLoadedMetadata);
+        }
+      });
     } else {
       loading.value = false;
       videoError.value = 'No video ID provided.';
@@ -221,6 +298,10 @@
       URL.revokeObjectURL(hlsBlobUrl.value);
     }
     if (videoPlayer.value) {
+      videoPlayer.value.removeEventListener('play', handleVideoPlay);
+      videoPlayer.value.removeEventListener('loadedmetadata', onLoadedMetadata);
+    }
+    if (videoPlayer.value) {
       videoPlayer.value.pause();
       videoPlayer.value.src = '';
     }
@@ -228,6 +309,7 @@
       hlsInstance.destroy();
       hlsInstance = null;
     }
+    disconnectWebSocket();
   });
 
   const formatDate = (dateString: string): string => {
