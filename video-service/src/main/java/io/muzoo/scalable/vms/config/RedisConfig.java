@@ -1,9 +1,7 @@
 package io.muzoo.scalable.vms.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.muzoo.scalable.vms.Listener.LikeCountMessageListener;
-import io.muzoo.scalable.vms.Listener.RedisMessageListener;
-import io.muzoo.scalable.vms.Listener.ViewCountMessageListener;
+import io.muzoo.scalable.vms.Listener.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
@@ -32,11 +30,17 @@ public class RedisConfig {
     @Bean
     public RedisMessageListenerContainer redisContainer(RedisConnectionFactory connectionFactory,
                                                         MessageListenerAdapter videoListenerAdapter,
-                                                        MessageListenerAdapter viewCountListenerAdapter) {
+                                                        MessageListenerAdapter viewCountListenerAdapter,
+                                                        MessageListenerAdapter likeCountListenerAdapter,
+                                                        MessageListenerAdapter commentListenerAdapter,
+                                                        MessageListenerAdapter editedCommentListenerAdapter) {
         RedisMessageListenerContainer container = new RedisMessageListenerContainer();
         container.setConnectionFactory(connectionFactory);
         container.addMessageListener(videoListenerAdapter, new PatternTopic("video:processed"));
         container.addMessageListener(viewCountListenerAdapter, new PatternTopic("view:count"));
+        container.addMessageListener(likeCountListenerAdapter, new PatternTopic("like:count"));
+        container.addMessageListener(commentListenerAdapter, new PatternTopic("comment:new"));
+        container.addMessageListener(editedCommentListenerAdapter, new PatternTopic("comment:edited"));
         container.setErrorHandler(e -> logger.error("Error in Redis listener container: {}", e.getMessage(), e));
         return container;
     }
@@ -57,7 +61,17 @@ public class RedisConfig {
     }
 
     @Bean
-    public MessageListenerAdapter likeCountListenerAdapter(LikeCountMessageListener likeListener) { // Add this
+    public MessageListenerAdapter likeCountListenerAdapter(LikeCountMessageListener likeListener) {
         return new MessageListenerAdapter(likeListener, "onMessage");
+    }
+
+    @Bean
+    public MessageListenerAdapter commentListenerAdapter(CommentMessageListener commentListener) {
+        return new MessageListenerAdapter(commentListener, "onMessage");
+    }
+
+    @Bean
+    public MessageListenerAdapter editedCommentListenerAdapter(EditedCommentMessageListener editedCommentListener) {
+        return new MessageListenerAdapter(editedCommentListener, "onMessage");
     }
 }

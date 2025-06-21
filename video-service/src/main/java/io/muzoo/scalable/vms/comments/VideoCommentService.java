@@ -7,6 +7,8 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -27,8 +29,8 @@ public class VideoCommentService {
         VideoComment comment = new VideoComment(videoId, userId, sanitizedContent);
         VideoComment saved = commentRepository.save(comment);
 
-        Map<String, Object> message = Map.of(
-                "id", saved.getId(),
+        Map<String, String> message = Map.of(
+                "id", saved.getId().toString(),
                 "video_id", videoId.toString(),
                 "user_id", userId,
                 "content", sanitizedContent,
@@ -60,4 +62,6 @@ public class VideoCommentService {
                 ))
                 .collect(Collectors.toList());
     }
+
+
 }

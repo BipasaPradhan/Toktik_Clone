@@ -16,22 +16,22 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 public class ViewCountMessageListener implements MessageListener {
-    private static final Logger logger = LoggerFactory.getLogger(ViewCountMessageListener.class);
+//    private static final Logger logger = LoggerFactory.getLogger(ViewCountMessageListener.class);
     private final ObjectMapper objectMapper;
     private final SimpMessagingTemplate messagingTemplate;
 
     @Override
     public void onMessage(Message message, byte[] pattern) {
-        logger.info("Received Redis message on channel: {}", new String(pattern));
+        System.out.println("Received Redis message on channel: " + new String(pattern));
         try {
             Map<String, String> data = objectMapper.readValue(message.getBody(), new TypeReference<>() {});
             Long videoId = Long.parseLong(data.get("video_id"));
             Long viewCount = Long.parseLong(data.get("view_count"));
-            logger.info("Received view:count message: video_id={}, view_count={}", videoId, viewCount);
+            System.out.println("Received view:count message: video_id: " + videoId + "view_count: " + viewCount);
             messagingTemplate.convertAndSend("/topic/views/" + videoId, viewCount);
-            logger.info("Sent view count to WebSocket: /topic/views/{}, view_count={}", videoId, viewCount);
+            System.out.println("Sent view count to WebSocket: /topic/views/" + videoId + ", view_count=" + viewCount);
         } catch (Exception e) {
-            logger.error("Error processing view:count message: {}", e.getMessage(), e);
+            System.out.println("Error processing view:count message: " + e.getMessage());
         }
     }
 }

@@ -2,7 +2,6 @@ package io.muzoo.scalable.vms.comments;
 
 import io.muzoo.scalable.vms.CommentUtils.AddCommentRequestDTO;
 import io.muzoo.scalable.vms.CommentUtils.CommentResponseDTO;
-import io.muzoo.scalable.vms.CommentUtils.VideoComment;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -20,13 +19,14 @@ public class VideoCommentController {
     private final VideoCommentService commentService;
 
     @PostMapping("/{videoId}/comments")
-    public ResponseEntity<CommentResponseDTO> postComment(
+    public ResponseEntity<?> postComment(
             @PathVariable Long videoId,
             @RequestHeader(value = "X-User-Id", required = false) String userId,
             @Valid @RequestBody AddCommentRequestDTO request) {
         if (userId == null || userId.trim().isEmpty()) {
             System.out.println("Unauthorized: Missing or empty X-User-Id for videoId: " + videoId);
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(null);
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "User ID required"));
         }
         System.out.println("Received request to post comment for videoId: " + videoId + " by userId: " + userId);
         CommentResponseDTO response = commentService.addComment(videoId, userId, request);
@@ -38,4 +38,5 @@ public class VideoCommentController {
         System.out.println("Received request to get comments for videoId: " + videoId);
         return ResponseEntity.ok(commentService.getCommentsForVideo(videoId));
     }
+
 }
