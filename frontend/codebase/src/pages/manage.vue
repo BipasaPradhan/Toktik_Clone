@@ -128,6 +128,9 @@
   import { useRouter } from 'vue-router'
   import { useAuthStore } from '@/stores/auth'
   import axios, { AxiosError } from 'axios'
+  import { Client, type StompSubscription } from '@stomp/stompjs'
+  import SockJS from 'sockjs-client'
+  import Logo from '@/components/Logo.vue'
 
   const router = useRouter()
   const authStore = useAuthStore()
@@ -160,6 +163,10 @@
   const videoToDelete = ref<number | null>(null)
   let pollInterval: number | null = null
   const isPolling = ref(false)
+  const subscriptions = ref<Map<number, StompSubscription>>(new Map());
+
+  // WebSocket client
+  const stompClient = ref<Client | null>(null);
 
   // Fetch videos uploaded by the user
   const fetchMyVideos = async () => {
@@ -174,6 +181,8 @@
       console.log('Fetched videos with ids:', videos.value.map(v => v.id));
       const hasProcessing = videos.value.some(video => video.status === 'PROCESSING');
       updatePollingState(hasProcessing);
+      // Subscribe to WebSocket for each video's view updates
+      subscribeToViewUpdates();
     } catch (error) {
       const axiosError = error as AxiosError;
       console.error('Error fetching my videos:', axiosError.message, axiosError.response?.data);
@@ -271,9 +280,56 @@
     fetchMyVideos()
   }
 
+  const connectWebSocket = () => {
+    const socket = new SockJS('/ws');
+    stompClient.value = new Client({
+      webSocketFactory: () => socket,
+      reconnectDelay: 5000,
+      debug: str => console.log('STOMP:', str),
+    });
+
+    stompClient.value.onConnect = () => {
+      console.log('Connected to WebSocket');
+      subscribeToViewUpdates();
+    };
+
+    stompClient.value.onStompError = frame => {
+      console.error('STOMP error:', frame);
+    };
+
+    stompClient.value.activate();
+  };
+
+  const subscribeToViewUpdates = () => {
+    if (stompClient.value && stompClient.value.connected) {
+      videos.value.forEach(video => {
+        const subscription = stompClient.value?.subscribe(`/topic/views/${video.id}`, message => {
+          const viewCount = parseInt(message.body);
+          console.log(`Received WebSocket view count for videoId=${video.id}: ${viewCount}`);
+          const updatedVideo = videos.value.find(v => v.id === video.id);
+          if (updatedVideo) {
+            updatedVideo.viewCount = viewCount; // Update reactively
+          }
+        });
+        if (subscription) {
+          subscriptions.value.set(video.id, subscription); // Store the subscription
+        }
+      });
+    }
+  };
+  // Clean up WebSocket connection
+  const disconnectWebSocket = () => {
+    if (stompClient.value) {
+      subscriptions.value.forEach(subscription => subscription.unsubscribe());
+      stompClient.value.deactivate();
+      stompClient.value = null;
+      console.log('Disconnected from WebSocket');
+    }
+  };
   // Fetch videos on mount
   onMounted(() => {
     fetchMyVideos();
+    connectWebSocket();
     window.addEventListener('refreshMyVideos', refreshMyVideos);
     window.manageRefresh = refreshMyVideos;
   });
@@ -286,6 +342,7 @@
       pollInterval = null;
       isPolling.value = false;
     }
+    disconnectWebSocket();
   });
 </script>
 

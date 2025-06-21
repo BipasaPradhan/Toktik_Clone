@@ -183,9 +183,6 @@
 
   const videoDuration = ref<number | null>(null)
   const videoPlayed = ref(false)
-  const watchTime = ref(0);
-  const minWatchTime = 5; // Minimum watch time for videos >= 5s
-  const minWatchPercentage = 0.9; // 90% for short videos
 
   //Comments state
   const comments = ref<Comment[]>([]);
@@ -290,50 +287,33 @@
   };
 
   const handleVideoPlay = () => {
-    if (!videoPlayed.value && videoPlayer.value) {
+    if (videoPlayer.value) {
       console.log(`Video playback started for videoId=${route.params.id}`);
-      const startTime = Date.now();
-      let effectiveMinWatchTime = minWatchTime;
-      if (videoDuration.value && videoDuration.value < minWatchTime) {
-        effectiveMinWatchTime = videoDuration.value * minWatchPercentage;
-        console.log(`Short video detected: duration=${videoDuration.value}s, effectiveMinWatchTime=${effectiveMinWatchTime}s`);
+      // Increment view count immediately on play (including replays)
+      if (!videoPlayed.value) {
+        incrementViewCount();
       }
+      // Reset videoPlayed on ended to allow replay counting
+      videoPlayer.value.addEventListener(
+        'ended',
+        () => {
+          videoPlayed.value = false; // Allow replay to increment view
+        },
+        { once: true }
+      );
+    }
+  };
 
-      const checkWatchTime = setInterval(async () => {
-        if (videoPlayer.value && !videoPlayer.value.paused) {
-          watchTime.value = (Date.now() - startTime) / 1000;
-          if (watchTime.value >= effectiveMinWatchTime) {
-            clearInterval(checkWatchTime);
-            try {
-              console.log(`Incrementing view count for videoId=${route.params.id} after ${watchTime.value}s`);
-              await axios.post(`/videos/${route.params.id}/views`, {}, {
-                headers: { 'X-User-Id': authStore.username },
-              });
-              console.log(`Successfully incremented view for videoId=${route.params.id}`);
-              videoPlayed.value = true;
-            } catch (error) {
-              console.error(`Error incrementing view count for videoId=${route.params.id}:`, error);
-            }
-          }
-        }
-      }, 1000);
-
-      // Handle video end for short videos
-      videoPlayer.value.addEventListener('ended', () => {
-        clearInterval(checkWatchTime);
-        if (!videoPlayed.value && watchTime.value >= effectiveMinWatchTime) {
-          axios.post(`/videos/${route.params.id}/views`, {}, {
-            headers: { 'X-User-Id': authStore.username },
-          })
-            .then(() => {
-              console.log(`Incremented view count on video end for videoId=${route.params.id}`);
-              videoPlayed.value = true;
-            })
-            .catch(error => {
-              console.error(`Error incrementing view count on end for videoId=${route.params.id}:`, error);
-            });
-        }
-      }, { once: true });
+  const incrementViewCount = async () => {
+    try {
+      console.log(`Incrementing view count for videoId=${route.params.id}`);
+      await axios.post(`/videos/${route.params.id}/views`, {}, {
+        headers: { 'X-User-Id': authStore.username },
+      });
+      console.log(`Successfully incremented view for videoId=${route.params.id}`);
+      videoPlayed.value = true; // Mark as played for this play session
+    } catch (error) {
+      console.error(`Error incrementing view count for videoId=${route.params.id}:`, error);
     }
   };
 
@@ -488,6 +468,7 @@
   };
 </script>
 
+
 <style scoped lang="scss">
 .watch-background {
   background-color: #f5f5f0;
@@ -566,6 +547,7 @@
   color: #333;
   line-height: 1.5;
 }
+
 .comments-section {
   margin-top: 24px;
   padding-left: 16px;
@@ -627,7 +609,6 @@
 .toc-logo:hover {
   color: #800020 !important;
 }
-
 </style>
 
 <route lang="json5">
