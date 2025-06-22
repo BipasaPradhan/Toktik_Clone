@@ -69,6 +69,9 @@
                     </v-btn>
                   </template>
                   <v-list>
+                    <v-list-item @click="watchVideo(video.id)">
+                      <v-list-item-title>Watch Video</v-list-item-title>
+                    </v-list-item>
                     <v-list-item @click="openEditDialog(video)">
                       <v-list-item-title>Edit</v-list-item-title>
                     </v-list-item>
@@ -163,7 +166,7 @@
   const videoToDelete = ref<number | null>(null)
   let pollInterval: number | null = null
   const isPolling = ref(false)
-  const subscriptions = ref<Map<number, StompSubscription>>(new Map());
+  const subscriptions = ref<Map<string, StompSubscription>>(new Map());
 
   // WebSocket client
   const stompClient = ref<Client | null>(null);
@@ -181,8 +184,8 @@
       console.log('Fetched videos with ids:', videos.value.map(v => v.id));
       const hasProcessing = videos.value.some(video => video.status === 'PROCESSING');
       updatePollingState(hasProcessing);
-      // Subscribe to WebSocket for each video's view updates
       subscribeToViewUpdates();
+      subscribeToLikeUpdates();
     } catch (error) {
       const axiosError = error as AxiosError;
       console.error('Error fetching my videos:', axiosError.message, axiosError.response?.data);
@@ -261,6 +264,11 @@
   const goToUpload = () => router.push('/upload')
   const goHome = () => router.push('/')
 
+  const watchVideo = (videoId: number) => {
+    console.log('Navigating to watch videoId:', videoId);
+    router.push(`/watch/${videoId}`);
+  }
+
   // Centralized polling state management
   const updatePollingState = (hasProcessing: boolean) => {
     if (hasProcessing && !isPolling.value) {
@@ -291,6 +299,7 @@
     stompClient.value.onConnect = () => {
       console.log('Connected to WebSocket');
       subscribeToViewUpdates();
+      subscribeToLikeUpdates();
     };
 
     stompClient.value.onStompError = frame => {
@@ -308,15 +317,35 @@
           console.log(`Received WebSocket view count for videoId=${video.id}: ${viewCount}`);
           const updatedVideo = videos.value.find(v => v.id === video.id);
           if (updatedVideo) {
-            updatedVideo.viewCount = viewCount; // Update reactively
+            updatedVideo.viewCount = viewCount;
           }
         });
         if (subscription) {
-          subscriptions.value.set(video.id, subscription); // Store the subscription
+          subscriptions.value.set(video.id.toString(), subscription);
+        }
+      })
+    }
+  }
+
+  const subscribeToLikeUpdates = () => {
+    console.log('Subscribing to like updates for videos:', videos.value.map(v => v.id)) // Debug like subscriptions
+    if (stompClient.value && stompClient.value.connected) {
+      videos.value.forEach(video => {
+        const subscription = stompClient.value?.subscribe(`/topic/likes/${video.id}`, message => {
+          const likeCount = parseInt(message.body);
+          console.log(`Received WebSocket like count for videoId=${video.id}: ${likeCount}`);
+          const updatedVideo = videos.value.find(v => v.id === video.id);
+          if (updatedVideo) {
+            updatedVideo.likeCount = likeCount;
+          }
+        });
+        if (subscription) {
+          subscriptions.value.set(`${video.id}_like`, subscription);
         }
       });
     }
   };
+
   // Clean up WebSocket connection
   const disconnectWebSocket = () => {
     if (stompClient.value) {
@@ -326,6 +355,7 @@
       console.log('Disconnected from WebSocket');
     }
   };
+
   // Fetch videos on mount
   onMounted(() => {
     fetchMyVideos();
