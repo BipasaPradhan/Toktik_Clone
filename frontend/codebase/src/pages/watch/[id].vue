@@ -43,6 +43,22 @@
             <p class="video-meta">Views: {{ videoDetails.viewCount }}</p>
             <p class="video-meta">{{ videoDetails.userId || 'Unknown User' }} • {{ formatDate(videoDetails.uploadTime) }}</p>
             <p class="video-description">{{ videoDetails.description || 'No Description Available' }}</p>
+
+            <!-- Like Button and Count -->
+            <div class="like-section">
+              <v-btn
+                class="like-btn"
+                :color="isLiked ? '#800020' : 'grey'"
+                :disabled="toggleLikeLoading"
+                variant="outlined"
+                @click="toggleLike"
+              >
+                <v-icon>{{ isLiked ? 'mdi-heart' : 'mdi-heart-outline' }}</v-icon>
+                Like
+              </v-btn>
+              <span class="like-count">{{ likeCount }}</span>
+            </div>
+            <v-alert v-if="likeError" class="mt-2" :text="likeError" type="error" />
           </div>
 
           <!-- Comments Section -->
@@ -190,17 +206,26 @@
   const commentError = ref('');
   const submittingComment = ref(false);
 
+  // Like state
+  const isLiked = ref(false);
+  const likeCount = ref(0);
+  const toggleLikeLoading = ref(false);
+  const likeError = ref('');
+
   const fetchVideoDetails = async (videoId: number, retries = 5) => {
     loading.value = true;
     videoError.value = '';
     const userId = authStore.username || 'default';
     try {
-      const [detailsResponse, commentsResponse] = await Promise.all([
+      const [detailsResponse, commentsResponse, likeResponse] = await Promise.all([
         axios.get(`/videos/details`, {
           params: { videoId, userId },
           headers: { 'X-User-Id': userId },
         }),
         axios.get(`/videos/${videoId}/comments`, {
+          headers: { 'X-User-Id': userId },
+        }),
+        axios.get(`/videos/${videoId}/is-liked`, {
           headers: { 'X-User-Id': userId },
         }),
       ]);
@@ -216,6 +241,11 @@
         duration: detailsResponse.data.duration || null,
         viewCount: detailsResponse.data.viewCount || 0,
       };
+
+      const likeData = likeResponse.data;
+      isLiked.value = likeData.isLiked;
+      likeCount.value = likeData.likeCount;
+      console.log('Updated like state after fetch:', { isLiked: isLiked.value, likeCount: likeCount.value });
 
       comments.value = commentsResponse.data || [];
       console.log(`Fetched ${comments.value.length} comments for videoId=${videoId}`);
@@ -283,6 +313,35 @@
       console.error(`Error fetching video details or comments for videoId=${videoId}:`, error);
       videoError.value = 'Failed to load video details or comments.';
       loading.value = false;
+    }
+  };
+
+  const toggleLike = async () => {
+    console.log(`Toggling like for videoId=${route.params.id}`);
+    if (!authStore.isLoggedIn) {
+      likeError.value = 'Please sign in to like.';
+      console.log('Toggle like failed: User not authenticated');
+      return;
+    }
+    toggleLikeLoading.value = true;
+    likeError.value = '';
+    try {
+      const response = await axios.post(`/videos/${route.params.id}/like`, {}, {
+        headers: { 'X-User-Id': authStore.username },
+      });
+      const { isLiked: newIsLiked, likeCount: newLikeCount, success, error } = response.data;
+      console.log(`Toggle like response for videoId=${route.params.id}:`, { newIsLiked, newLikeCount, success, error });
+      if (success) {
+        isLiked.value = newIsLiked;
+        likeCount.value = newLikeCount;
+      } else {
+        likeError.value = error || 'Failed to toggle like.';
+      }
+    } catch (error) {
+      console.error(`Error toggling like for videoId=${route.params.id}:`, error);
+      likeError.value = 'Failed to toggle like. Please try again.';
+    } finally {
+      toggleLikeLoading.value = false;
     }
   };
 
@@ -389,6 +448,12 @@
           content: comment.content,
           createdAt: comment.created_at,
         });
+      });
+      // Subscribe to like updates
+      stompClient.value?.subscribe(`/topic/likes/${videoId}`, message => {
+        const likeCountNumber = parseInt(message.body);
+        console.log(`Received WebSocket like count for videoId=${videoId}: ${likeCountNumber}`);
+        likeCount.value = likeCountNumber;
       });
     };
 
@@ -546,6 +611,21 @@
   font-size: 1rem;
   color: #333;
   line-height: 1.5;
+}
+
+.like-section {
+  display: flex;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.like-btn {
+  margin-right: 10px;
+}
+
+.like-count {
+  font-size: 1rem;
+  color: #333;
 }
 
 .comments-section {

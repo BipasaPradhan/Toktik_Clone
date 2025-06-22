@@ -1,12 +1,10 @@
 package io.muzoo.scalable.vms.r2;
 
 import io.muzoo.scalable.vms.*;
-import io.muzoo.scalable.vms.redis.RedisMethods;
 import io.muzoo.scalable.vms.redis.RedisPublisher;
 import jakarta.transaction.Transactional;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -40,9 +38,6 @@ public class VideoService {
     private final VideoLikeRepository videoLikeRepository;
     private final RedisPublisher redisPublisher;
     private final RedisTemplate<String, Object> redisTemplate;
-
-    @Autowired
-    private RedisMethods redisMethods;
 
     @Value("${cloudflare.r2.bucket-name}")
     private String bucketName;
@@ -247,24 +242,6 @@ public class VideoService {
         }
     }
 
-    @Scheduled(fixedRate = 60000)
-    @Transactional
-    public void syncViewCountsToDatabase() {
-        System.out.println("Syncing view counts to database");
-        redisTemplate.keys("video:*:views").forEach(key -> {
-            Long videoId = Long.parseLong(key.split(":")[1]);
-            Long viewCount = (Long) redisTemplate.opsForValue().get(key);
-            if (viewCount != null) {
-                try {
-                    videoRepository.updateViewCount(videoId, viewCount);
-                    System.out.println("Synced view count for videoId=" + videoId + ": " + viewCount);
-                } catch (Exception e) {
-                    System.out.println("Failed to sync view count for videoId=" + videoId + ": " + e.getMessage());
-                }
-            }
-        });
-    }
-
     public void deleteVideo(Long id, String userId) {
         Video video = videoRepository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Video not found"));
@@ -281,21 +258,22 @@ public class VideoService {
         try {
             if (existingLike != null) {
                 videoLikeRepository.delete(existingLike);
-                redisMethods.decrementLikeCountRedis(videoId);
+                video.setLikeCount(video.getLikeCount() - 1); // Immediate DB decrement
             } else {
                 VideoLike like = new VideoLike(videoId, userId);
                 videoLikeRepository.save(like);
-                redisMethods.incrementLikeCountRedis(videoId);
+                video.setLikeCount(video.getLikeCount() + 1); // Immediate DB increment
             }
+            videoRepository.save(video); // Persist the updated likeCount
         } catch (DataIntegrityViolationException e) {
             System.out.println("Duplicate like attempt for videoId " + videoId + " by user " + userId + ": " + e.getMessage());
             success = false;
         }
-        // Fetch the latest likeCount from the database for accuracy
         long updatedLikeCount = getLikeCount(videoId);
-        response.put("isLiked", existingLike == null); // Intended state, even if failed
+        boolean isLiked = videoLikeRepository.findByVideoIdAndUserId(videoId, userId).isPresent();
+        response.put("isLiked", isLiked);
         response.put("likeCount", updatedLikeCount);
-        response.put("success", success); // Add success flag
+        response.put("success", success);
         if (!success) {
             response.put("error", "Duplicate like attempt detected, no change made");
         }
