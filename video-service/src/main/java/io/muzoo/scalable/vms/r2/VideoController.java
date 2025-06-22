@@ -6,6 +6,7 @@ import io.muzoo.scalable.vms.VideoStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -19,6 +20,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class VideoController {
     private final VideoService videoService;
+    private final SimpMessagingTemplate messagingTemplate;
 
     @GetMapping("/presign-upload")
     public ResponseEntity<VideoService.PresignedUploadResponse> getPresignedUploadUrl(
@@ -185,7 +187,20 @@ public class VideoController {
     public ResponseEntity<Map<String, Object>> toggleLike(
             @PathVariable Long id,
             @RequestHeader("X-User-Id") String userId) {
+
         Map<String, Object> response = videoService.toggleLike(id, userId);
+
+        System.out.println("ToggleLike result: " + response);
+
+        Map<String, String> payload = new HashMap<>();
+        payload.put("videoId", id.toString());
+        payload.put("likeCount", response.get("likeCount").toString());
+        payload.put("isLiked", response.get("isLiked").toString());
+
+        System.out.println("Sending WebSocket payload: " + payload);
+
+        messagingTemplate.convertAndSend("/topic/likes/" + id, payload);
+
         return ResponseEntity.ok(response);
     }
 

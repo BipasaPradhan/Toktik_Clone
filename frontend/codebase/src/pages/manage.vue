@@ -323,22 +323,29 @@
         if (subscription) {
           subscriptions.value.set(video.id.toString(), subscription);
         }
-      })
+      });
     }
-  }
+  };
 
   const subscribeToLikeUpdates = () => {
-    console.log('Subscribing to like updates for videos:', videos.value.map(v => v.id)) // Debug like subscriptions
     if (stompClient.value && stompClient.value.connected) {
       videos.value.forEach(video => {
         const subscription = stompClient.value?.subscribe(`/topic/likes/${video.id}`, message => {
-          const likeCount = parseInt(message.body);
-          console.log(`Received WebSocket like count for videoId=${video.id}: ${likeCount}`);
-          const updatedVideo = videos.value.find(v => v.id === video.id);
-          if (updatedVideo) {
-            updatedVideo.likeCount = likeCount;
+          try {
+            const payload = JSON.parse(message.body);
+            const videoId = parseInt(payload.videoId);
+            const likeCount = parseInt(payload.likeCount);
+            console.log(`Received WebSocket like count for videoId=${videoId}: ${likeCount}`);
+
+            const updatedVideo = videos.value.find(v => v.id === videoId);
+            if (updatedVideo) {
+              updatedVideo.likeCount = likeCount;
+            }
+          } catch (err) {
+            console.error('Failed to parse like update payload:', err, message.body);
           }
         });
+
         if (subscription) {
           subscriptions.value.set(`${video.id}_like`, subscription);
         }

@@ -41,7 +41,7 @@
               <span>{{ video.userId }}</span> • <span>{{ formatDate(video.uploadTime) }}</span>
             </v-card-text>
             <v-card-text class="video-meta">
-              Views: {{ video.viewCount }}
+              <span>Views: {{ video.viewCount }}</span> • <span>Likes: {{ video.likeCount || 0 }}</span>
             </v-card-text>
           </v-card>
         </v-col>
@@ -82,6 +82,7 @@
     uploadTime: string
     status: string
     viewCount: number
+    likeCount?: number
   }
 
   // Reactive state
@@ -91,7 +92,7 @@
   const thumbnailUrls = ref<Record<number, string>>({})
   let pollInterval: number | null = null
   const isPolling = ref(false)
-  const subscriptions = ref<Map<number, StompSubscription>>(new Map());
+  const subscriptions = ref<Map<string, StompSubscription>>(new Map());
 
   // WebSocket client
   const stompClient = ref<Client | null>(null);
@@ -201,6 +202,7 @@
     stompClient.value.onConnect = () => {
       console.log('Connected to WebSocket');
       subscribeToViewUpdates();
+      subscribeToLikeUpdates();
     };
 
     stompClient.value.onStompError = frame => {
@@ -222,7 +224,33 @@
           }
         });
         if (subscription) {
-          subscriptions.value.set(video.id, subscription); // Store the subscription
+          subscriptions.value.set(video.id.toString(), subscription); // Store the subscription
+        }
+      });
+    }
+  };
+
+  const subscribeToLikeUpdates = () => {
+    if (stompClient.value && stompClient.value.connected) {
+      videos.value.forEach(video => {
+        const subscription = stompClient.value?.subscribe(`/topic/likes/${video.id}`, message => {
+          try {
+            const payload = JSON.parse(message.body);
+            const videoId = parseInt(payload.videoId);
+            const likeCount = parseInt(payload.likeCount);
+            console.log(`Received WebSocket like count for videoId=${videoId}: ${likeCount}`);
+
+            const updatedVideo = videos.value.find(v => v.id === videoId);
+            if (updatedVideo) {
+              updatedVideo.likeCount = likeCount;
+            }
+          } catch (err) {
+            console.error('Failed to parse like update payload:', err, message.body);
+          }
+        });
+
+        if (subscription) {
+          subscriptions.value.set(`${video.id}_like`, subscription);
         }
       });
     }

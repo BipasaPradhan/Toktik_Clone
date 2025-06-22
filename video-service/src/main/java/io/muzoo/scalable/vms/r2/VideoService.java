@@ -278,7 +278,8 @@ public class VideoService {
             success = false;
         }
         long updatedLikeCount = getLikeCount(videoId);
-        boolean isLiked = videoLikeRepository.findByVideoIdAndUserId(videoId, userId).isPresent();
+//        boolean isLiked = videoLikeRepository.findByVideoIdAndUserId(videoId, userId).isPresent();
+        boolean isLiked = existingLike == null;
         response.put("isLiked", isLiked);
         response.put("likeCount", updatedLikeCount);
         response.put("success", success);
