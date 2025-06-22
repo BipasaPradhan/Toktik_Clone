@@ -119,6 +119,7 @@ public class VideoController {
                             .duration(video.getDuration())
                             .uploadTime(video.getUploadTime().toString())
                             .status(video.getStatus())
+                            .visibility(video.getVisibility())
                             .viewCount(video.getViewCount())
                             .likeCount(videoService.getLikeCount(video.getId()))
                             .build();

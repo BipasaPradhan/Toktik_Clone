@@ -33,4 +33,6 @@ public class VideoDetailsResponseDTO {
     private final Long viewCount;
     @JsonProperty("likeCount")
     private final Long likeCount;
+    @JsonProperty("visibility")
+    private String visibility;
 }
