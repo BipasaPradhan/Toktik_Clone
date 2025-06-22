@@ -224,21 +224,29 @@ public class VideoService {
 
     @Transactional
     public void incrementViewCount(Long videoId) {
-        // Increment view count in Redis
-        String key = "video:" + videoId + ":views";
-        Long viewCount = redisTemplate.opsForValue().increment(key);
-
-        Map<String, String> message = Map.of(
-                "video_id", videoId.toString(),
-                "view_count", viewCount.toString()
-        );
-        System.out.println("Publishing view count to Redis: video_id=" + videoId + ", view_count=" + viewCount);
-        redisPublisher.publish("view:count", message);
         try {
+            // Increment in DB
             videoRepository.incrementViewCount(videoId);
             System.out.println("Updated database view count for videoId=" + videoId);
+
+            Long updatedViewCount = videoRepository.findById(videoId)
+                    .map(Video::getViewCount)
+                    .orElse(0L);
+
+            // Sync redis
+            String key = "video:" + videoId + ":views";
+            redisTemplate.opsForValue().set(key, updatedViewCount);
+
+            // Publish updated count
+            Map<String, String> message = Map.of(
+                    "video_id", videoId.toString(),
+                    "view_count", updatedViewCount.toString()
+            );
+            System.out.println("Publishing view count to Redis: video_id=" + videoId + ", view_count=" + updatedViewCount);
+            redisPublisher.publish("view:count", message);
+
         } catch (Exception e) {
-            System.out.println("Failed to update database view count for videoId=" + videoId + ": " + e.getMessage());
+            System.out.println("Failed to increment view count for videoId=" + videoId + ": " + e.getMessage());
         }
     }
 
@@ -277,7 +285,11 @@ public class VideoService {
         if (!success) {
             response.put("error", "Duplicate like attempt detected, no change made");
         }
-        redisPublisher.publish("like:count", Map.of("videoId", videoId.toString(), "likeCount", String.valueOf(updatedLikeCount)));
+        redisPublisher.publish("like:count", Map.of(
+                "videoId", videoId.toString(),
+                "likeCount", String.valueOf(updatedLikeCount),
+                "isLiked", String.valueOf(isLiked)
+        ));
         return response;
     }
 

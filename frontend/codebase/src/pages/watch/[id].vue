@@ -449,12 +449,24 @@
           createdAt: comment.created_at,
         });
       });
+
       // Subscribe to like updates
       stompClient.value?.subscribe(`/topic/likes/${videoId}`, message => {
-        const likeCountNumber = parseInt(message.body);
-        console.log(`Received WebSocket like count for videoId=${videoId}: ${likeCountNumber}`);
-        likeCount.value = likeCountNumber;
+        try {
+          const payload = JSON.parse(message.body);
+          if (payload.videoId == videoId.toString()) {
+            likeCount.value = parseInt(payload.likeCount);
+            isLiked.value = payload.isLiked === 'true'; // convert string to boolean
+            console.log('Updated like state from WebSocket:', {
+              likeCount: likeCount.value,
+              isLiked: isLiked.value,
+            });
+          }
+        } catch (err) {
+          console.error('Failed to parse like payload:', err, message.body);
+        }
       });
+
     };
 
     stompClient.value.onStompError = frame => {

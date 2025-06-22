@@ -26,7 +26,7 @@ public class LikeCountMessageListener implements MessageListener {
             Long videoId = Long.parseLong(data.get("videoId"));
             Long likeCount = Long.parseLong(data.get("likeCount"));
             log.info("Received like:count message: videoId={}, likeCount={}", videoId, likeCount);
-            messagingTemplate.convertAndSend("/topic/likes/" + videoId, likeCount);
+            messagingTemplate.convertAndSend("/topic/likes/" + videoId, data);
             log.info("Sent like count to WebSocket: /topic/likes/{}, likeCount={}", videoId, likeCount);
         } catch (Exception e) {
             log.error("Error processing like:count message: {}", e.getMessage(), e);
