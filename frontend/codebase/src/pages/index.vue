@@ -111,6 +111,7 @@
       videos.value = [...videos.value, ...newVideos]
       // Pre-fetch thumbnails
       await Promise.all(newVideos.map(video => fetchThumbnail(video.id)))
+      await Promise.all(newVideos.map(video => patchViewCount(video.id)));
 
       // Check if any video is in PROCESSING state
       const hasProcessing = videos.value.some(video => video.status === 'PROCESSING')
@@ -256,6 +257,24 @@
       });
     }
   };
+
+  const patchViewCount = async (videoId: number) => {
+    try {
+      const userId = authStore.username || 'default'
+      const response = await axios.get(`/videos/${videoId}/view-count-total`, {
+        headers: { 'X-User-Id': userId },
+      });
+      const totalViewCount = response.data.view_count;
+      const video = videos.value.find(v => v.id === videoId);
+      if (video) {
+        video.viewCount = totalViewCount;
+        console.log(`Patched view count for videoId=${videoId}: ${totalViewCount}`);
+      }
+    } catch (error) {
+      console.error(`Failed to patch view count for videoId=${videoId}`, error);
+    }
+  };
+
 
   // Clean up WebSocket connection
   const disconnectWebSocket = () => {

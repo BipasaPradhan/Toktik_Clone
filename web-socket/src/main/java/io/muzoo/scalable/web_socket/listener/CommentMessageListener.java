@@ -1,4 +1,4 @@
-package io.muzoo.scalable.vms.Listener;
+package io.muzoo.scalable.web_socket.listener;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;

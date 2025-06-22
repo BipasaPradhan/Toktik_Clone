@@ -37,7 +37,7 @@ services:
       dockerfile: Dockerfile
     container_name: video-processing-service
     ports:
-      - "8002:80"
+      - "8003:80"
     volumes:
       - ./video_processing_service:/app
       - counter_data:/app/counter
@@ -177,6 +177,19 @@ services:
        condition: service_healthy
    networks:
      - redis_network
+
+  websocket-service:
+    build:
+      context: ./web-socket 
+      dockerfile: Dockerfile
+    container_name: websocket-service
+    ports:
+      - "8082:8082"
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - redis_network
 
 networks:
   redis_network:

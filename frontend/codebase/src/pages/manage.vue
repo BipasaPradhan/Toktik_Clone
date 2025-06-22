@@ -182,6 +182,7 @@
       });
       videos.value = response.data.videos || [];
       console.log('Fetched videos with ids:', videos.value.map(v => v.id));
+      await Promise.all(videos.value.map(video => patchViewCount(video.id)));
       const hasProcessing = videos.value.some(video => video.status === 'PROCESSING');
       updatePollingState(hasProcessing);
       subscribeToViewUpdates();
@@ -350,6 +351,23 @@
           subscriptions.value.set(`${video.id}_like`, subscription);
         }
       });
+    }
+  };
+
+  const patchViewCount = async (videoId: number) => {
+    try {
+      const userId = authStore.username || 'default';
+      const response = await axios.get(`/videos/${videoId}/view-count-total`, {
+        headers: { 'X-User-Id': userId },
+      });
+      const total = response.data.view_count;
+      const video = videos.value.find(v => v.id === videoId);
+      if (video) {
+        video.viewCount = total;
+        console.log(`Patched view count for videoId=${videoId}: ${total}`);
+      }
+    } catch (error) {
+      console.error(`Failed to patch view count for videoId=${videoId}`, error);
     }
   };
 

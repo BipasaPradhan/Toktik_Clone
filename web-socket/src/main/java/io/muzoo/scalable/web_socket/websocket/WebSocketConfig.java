@@ -1,4 +1,4 @@
-package io.muzoo.scalable.vms.config;
+package io.muzoo.scalable.web_socket.websocket;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
