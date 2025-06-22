@@ -4,6 +4,7 @@ import io.muzoo.scalable.vms.Video;
 import io.muzoo.scalable.vms.VideoDetailsResponseDTO;
 import io.muzoo.scalable.vms.VideoStatus;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -21,6 +22,7 @@ import java.util.stream.Collectors;
 public class VideoController {
     private final VideoService videoService;
     private final SimpMessagingTemplate messagingTemplate;
+    private final RedisTemplate<String, Long> redisTemplateLong;
 
     @GetMapping("/presign-upload")
     public ResponseEntity<VideoService.PresignedUploadResponse> getPresignedUploadUrl(
@@ -212,5 +214,15 @@ public class VideoController {
         response.put("isLiked", videoService.isLikedByUser(id, userId));
         response.put("likeCount", videoService.getLikeCount(id));
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/{id}/view-count-total")
+    public ResponseEntity<Map<String, Long>> getViewCountTotal(@PathVariable Long id) {
+        String mainKey = "video:" + id + ":views";
+        String bufferKey = "video:" + id + ":views:buffer";
+        Long mainCount = redisTemplateLong.opsForValue().get(mainKey) != null ? redisTemplateLong.opsForValue().get(mainKey) : 0L;
+        Long bufferCount = redisTemplateLong.opsForValue().get(bufferKey) != null ? redisTemplateLong.opsForValue().get(bufferKey) : 0L;
+        Long total = mainCount + bufferCount;
+        return ResponseEntity.ok(Map.of("view_count", total));
     }
 }

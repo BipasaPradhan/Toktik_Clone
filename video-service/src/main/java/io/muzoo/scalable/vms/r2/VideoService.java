@@ -26,6 +26,7 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -38,6 +39,7 @@ public class VideoService {
     private final VideoLikeRepository videoLikeRepository;
     private final RedisPublisher redisPublisher;
     private final RedisTemplate<String, Object> redisTemplate;
+    private final RedisTemplate<String, Long> redisTemplateLong;
 
     @Value("${cloudflare.r2.bucket-name}")
     private String bucketName;
@@ -224,29 +226,58 @@ public class VideoService {
 
     @Transactional
     public void incrementViewCount(Long videoId) {
-        try {
-            // Increment in DB
-            videoRepository.incrementViewCount(videoId);
-            System.out.println("Updated database view count for videoId=" + videoId);
+        String bufferKey = "video:" + videoId + ":views:buffer";
+        String mainKey = "video:" + videoId + ":views";
 
-            Long updatedViewCount = videoRepository.findById(videoId)
+        Long viewCount = redisTemplateLong.opsForValue().get(mainKey);
+        if (viewCount == null) {
+            viewCount = videoRepository.findById(videoId)
                     .map(Video::getViewCount)
                     .orElse(0L);
+            redisTemplateLong.opsForValue().set(mainKey, viewCount);
+            System.out.println("Initialized Redis main view count for videoId=" + videoId + " to " + viewCount);
+        }
 
-            // Sync redis
-            String key = "video:" + videoId + ":views";
-            redisTemplate.opsForValue().set(key, updatedViewCount);
+        Long bufferedViews = redisTemplateLong.opsForValue().increment(bufferKey);
 
-            // Publish updated count
-            Map<String, String> message = Map.of(
-                    "video_id", videoId.toString(),
-                    "view_count", updatedViewCount.toString()
-            );
-            System.out.println("Publishing view count to Redis: video_id=" + videoId + ", view_count=" + updatedViewCount);
-            redisPublisher.publish("view:count", message);
+        Map<String, String> message = Map.of(
+                "video_id", videoId.toString(),
+                "view_count", String.valueOf(viewCount + bufferedViews)
+        );
+        redisPublisher.publish("view:count", message);
 
-        } catch (Exception e) {
-            System.out.println("Failed to increment view count for videoId=" + videoId + ": " + e.getMessage());
+        System.out.println("Buffered +1 view for videoId=" + videoId + " (buffer=" + bufferedViews + ", base=" + viewCount + ")");
+    }
+
+    @Scheduled(fixedRate = 30000)  // Evey 30 seconds
+    @Transactional
+    public void syncViewCountsToDatabase() {
+        System.out.println("Syncing view counts from Redis to DB...");
+
+        Set<String> keys = redisTemplateLong.keys("video:*:views:buffer");
+        if (keys == null) return;
+
+        for (String bufferKey : keys) {
+            try {
+                Long videoId = Long.parseLong(bufferKey.split(":")[1]);
+                Long bufferedViews = redisTemplateLong.opsForValue().get(bufferKey);
+
+                if (bufferedViews != null && bufferedViews > 0) {
+                    // Update DB
+                    videoRepository.incrementViewCountByDelta(videoId, bufferedViews);
+                    System.out.println("Synced videoId=" + videoId + " with +" + bufferedViews + " views");
+
+                    // Update main Redis key
+                    String mainKey = "video:" + videoId + ":views";
+                    Long currentMainCount = redisTemplateLong.opsForValue().get(mainKey) != null ? redisTemplateLong.opsForValue().get(mainKey) : 0L;
+                    redisTemplate.opsForValue().set(mainKey, currentMainCount + bufferedViews);
+
+                    // Reset buffer
+                    redisTemplate.delete(bufferKey);
+                }
+            } catch (Exception e) {
+                System.out.println("Failed to sync bufferKey=" + bufferKey + ": " + e.getMessage());
+            }
         }
     }
 
@@ -266,20 +297,19 @@ public class VideoService {
         try {
             if (existingLike != null) {
                 videoLikeRepository.delete(existingLike);
-                video.setLikeCount(video.getLikeCount() - 1); // Immediate DB decrement
+                video.setLikeCount(video.getLikeCount() - 1);
             } else {
                 VideoLike like = new VideoLike(videoId, userId);
                 videoLikeRepository.save(like);
-                video.setLikeCount(video.getLikeCount() + 1); // Immediate DB increment
+                video.setLikeCount(video.getLikeCount() + 1);
             }
-            videoRepository.save(video); // Persist the updated likeCount
+            videoRepository.save(video);
         } catch (DataIntegrityViolationException e) {
             System.out.println("Duplicate like attempt for videoId " + videoId + " by user " + userId + ": " + e.getMessage());
             success = false;
         }
         long updatedLikeCount = getLikeCount(videoId);
-//        boolean isLiked = videoLikeRepository.findByVideoIdAndUserId(videoId, userId).isPresent();
-        boolean isLiked = existingLike == null;
+        boolean isLiked = videoLikeRepository.findByVideoIdAndUserId(videoId, userId).isPresent();
         response.put("isLiked", isLiked);
         response.put("likeCount", updatedLikeCount);
         response.put("success", success);

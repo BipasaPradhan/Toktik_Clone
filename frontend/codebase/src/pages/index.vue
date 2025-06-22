@@ -116,6 +116,7 @@
       const hasProcessing = videos.value.some(video => video.status === 'PROCESSING')
       updatePollingState(hasProcessing)
       subscribeToViewUpdates()
+      subscribeToLikeUpdates()
     } catch (error) {
       const axiosError = error as AxiosError
       console.error('Error fetching videos:', axiosError.message, axiosError.response?.data || axiosError.response?.status)

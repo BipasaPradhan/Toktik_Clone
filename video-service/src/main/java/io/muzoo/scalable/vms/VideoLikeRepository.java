@@ -9,5 +9,4 @@ import java.util.Optional;
 public interface VideoLikeRepository extends JpaRepository<VideoLike, Long> {
     Optional<VideoLike> findByVideoIdAndUserId(Long videoId, String userId);
 
-    long countByVideoId(Long videoId);
 }

@@ -217,7 +217,7 @@
     videoError.value = '';
     const userId = authStore.username || 'default';
     try {
-      const [detailsResponse, commentsResponse, likeResponse] = await Promise.all([
+      const [detailsResponse, commentsResponse, likeResponse, viewCountResponse] = await Promise.all([
         axios.get(`/videos/details`, {
           params: { videoId, userId },
           headers: { 'X-User-Id': userId },
@@ -226,6 +226,9 @@
           headers: { 'X-User-Id': userId },
         }),
         axios.get(`/videos/${videoId}/is-liked`, {
+          headers: { 'X-User-Id': userId },
+        }),
+        axios.get(`/videos/${videoId}/view-count-total`, {
           headers: { 'X-User-Id': userId },
         }),
       ]);
@@ -239,7 +242,7 @@
         userId: detailsResponse.data.userId || '',
         uploadTime: detailsResponse.data.uploadTime || '',
         duration: detailsResponse.data.duration || null,
-        viewCount: detailsResponse.data.viewCount || 0,
+        viewCount: viewCountResponse.data.view_count || 0,
       };
 
       const likeData = likeResponse.data;
