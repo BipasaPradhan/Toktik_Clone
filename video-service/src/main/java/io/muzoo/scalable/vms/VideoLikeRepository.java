@@ -7,10 +7,7 @@ import java.util.Optional;
 
 @Repository
 public interface VideoLikeRepository extends JpaRepository<VideoLike, Long> {
-    Optional<VideoLike> findByVideoIdAndUserId(Long videoId, Long userId);
+    Optional<VideoLike> findByVideoIdAndUserId(Long videoId, String userId);
 
     long countByVideoId(Long videoId);
-
-    void deleteByVideoIdAndUserId(Long videoId, Long userId);
-
 }

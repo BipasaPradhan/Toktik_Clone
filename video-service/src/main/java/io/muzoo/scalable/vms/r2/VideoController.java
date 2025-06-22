@@ -183,12 +183,18 @@ public class VideoController {
     @PostMapping("/{id}/like")
     public ResponseEntity<Map<String, Object>> toggleLike(
             @PathVariable Long id,
-            @RequestHeader("X-User-Id") Long userId) {
-        boolean isLiked = videoService.toggleLike(id, userId);
-        long likeCount = videoService.getLikeCount(id);
+            @RequestHeader("X-User-Id") String userId) {
+        Map<String, Object> response = videoService.toggleLike(id, userId);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/{id}/is-liked")
+    public ResponseEntity<Map<String, Object>> isLiked(
+            @PathVariable Long id,
+            @RequestHeader("X-User-Id") String userId) {
         Map<String, Object> response = new HashMap<>();
-        response.put("isLiked", isLiked);
-        response.put("likeCount", likeCount);
+        response.put("isLiked", videoService.isLikedByUser(id, userId));
+        response.put("likeCount", videoService.getLikeCount(id));
         return ResponseEntity.ok(response);
     }
 }

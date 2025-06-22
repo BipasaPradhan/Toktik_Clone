@@ -31,4 +31,17 @@ public interface VideoRepository extends JpaRepository<Video, Long> {
     void updateViewCount(@Param("videoId") Long videoId, @Param("viewCount") Long viewCount);
 
     Optional<Video> findByIdAndUserId(Long id, String userId);
+
+    @Modifying
+    @Query("UPDATE Video v SET v.likeCount = v.likeCount + 1 WHERE v.id = :id")
+    void incrementLikeCount(@Param("id") Long id);
+
+    // Ensure likeCount doesn't go negative
+    @Modifying
+    @Query("UPDATE Video v SET v.likeCount = CASE WHEN v.likeCount - 1 < 0 THEN 0 ELSE v.likeCount - 1 END WHERE v.id = :id")
+    void decrementLikeCountSafely(@Param("id") Long id);
+
+    @Modifying
+    @Query("UPDATE Video v SET v.likeCount = :likeCount WHERE v.id = :videoId")
+    void updateLikeCount(@Param("videoId") Long videoId, @Param("likeCount") Long likeCount);
 }

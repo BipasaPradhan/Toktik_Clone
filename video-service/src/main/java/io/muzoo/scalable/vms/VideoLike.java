@@ -9,17 +9,23 @@ import java.time.ZoneId;
 @Entity
 @Data
 @NoArgsConstructor
-@Table(name = "video_likes", uniqueConstraints = @UniqueConstraint(columnNames = {"video_id", "user_id"}))
+@Table(
+        name = "video_likes",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"video_id", "user_id"})
+)
 public class VideoLike {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id")
     private Long id;
 
-    @ManyToOne
-    @JoinColumn(name = "video_id", nullable = false)
-    private Video video;
+    @Column(name = "video_id", nullable = false)
+    private Long videoId;
 
     @Column(name = "user_id", nullable = false)
-    private Long userId;
+    private String userId;
+
+    public VideoLike(Long videoId, String userId) {
+        this.videoId = videoId;
+        this.userId = userId;
+    }
 }

@@ -1,12 +1,14 @@
 package io.muzoo.scalable.vms.r2;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.muzoo.scalable.vms.*;
+import io.muzoo.scalable.vms.redis.RedisMethods;
 import io.muzoo.scalable.vms.redis.RedisPublisher;
 import jakarta.transaction.Transactional;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.rest.webmvc.ResourceNotFoundException;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -23,6 +25,7 @@ import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignReques
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -37,6 +40,9 @@ public class VideoService {
     private final VideoLikeRepository videoLikeRepository;
     private final RedisPublisher redisPublisher;
     private final RedisTemplate<String, Object> redisTemplate;
+
+    @Autowired
+    private RedisMethods redisMethods;
 
     @Value("${cloudflare.r2.bucket-name}")
     private String bucketName;
@@ -266,29 +272,44 @@ public class VideoService {
     }
 
     @Transactional
-    public boolean toggleLike(Long videoId, Long userId) {
+    public Map<String, Object> toggleLike(Long videoId, String userId) {
+        Video video = videoRepository.findById(videoId)
+                .orElseThrow(() -> new RuntimeException("Video not found with ID: " + videoId));
         VideoLike existingLike = videoLikeRepository.findByVideoIdAndUserId(videoId, userId).orElse(null);
-        if (existingLike != null) {
-            videoLikeRepository.delete(existingLike);
-            long likeCount = videoLikeRepository.countByVideoId(videoId);
-            Map<String, String> message = Map.of("videoId", videoId.toString(), "likeCount", String.valueOf(likeCount));
-            redisPublisher.publish("like:count", message); // Publish unliked
-            return false;
-        } else {
-            Video video = videoRepository.findById(videoId)
-                    .orElseThrow(() -> new RuntimeException("Video not found"));
-            VideoLike like = new VideoLike();
-            like.setVideo(video);
-            like.setUserId(userId);
-            videoLikeRepository.save(like);
-            long likeCount = videoLikeRepository.countByVideoId(videoId);
-            Map<String, String> message = Map.of("videoId", videoId.toString(), "likeCount", String.valueOf(likeCount));
-            redisPublisher.publish("like:count", message); // Publish liked
-            return true;
+        Map<String, Object> response = new HashMap<>();
+        boolean success = true;
+        try {
+            if (existingLike != null) {
+                videoLikeRepository.delete(existingLike);
+                redisMethods.decrementLikeCountRedis(videoId);
+            } else {
+                VideoLike like = new VideoLike(videoId, userId);
+                videoLikeRepository.save(like);
+                redisMethods.incrementLikeCountRedis(videoId);
+            }
+        } catch (DataIntegrityViolationException e) {
+            System.out.println("Duplicate like attempt for videoId " + videoId + " by user " + userId + ": " + e.getMessage());
+            success = false;
         }
+        // Fetch the latest likeCount from the database for accuracy
+        long updatedLikeCount = getLikeCount(videoId);
+        response.put("isLiked", existingLike == null); // Intended state, even if failed
+        response.put("likeCount", updatedLikeCount);
+        response.put("success", success); // Add success flag
+        if (!success) {
+            response.put("error", "Duplicate like attempt detected, no change made");
+        }
+        redisPublisher.publish("like:count", Map.of("videoId", videoId.toString(), "likeCount", String.valueOf(updatedLikeCount)));
+        return response;
+    }
+
+    public boolean isLikedByUser(Long videoId, String userId) {
+        return videoLikeRepository.findByVideoIdAndUserId(videoId, userId).isPresent();
     }
 
     public long getLikeCount(Long videoId) {
-        return videoLikeRepository.countByVideoId(videoId);
+        return videoRepository.findById(videoId)
+                .map(Video::getLikeCount)
+                .orElse(0L); // Return 0 if video not found
     }
 }

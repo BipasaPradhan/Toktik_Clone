@@ -1,5 +1,6 @@
 package io.muzoo.scalable.vms.Listener;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.data.redis.connection.Message;
 import org.springframework.data.redis.connection.MessageListener;
@@ -21,7 +22,7 @@ public class LikeCountMessageListener implements MessageListener {
     public void onMessage(Message message, byte[] pattern) {
         log.info("Received Redis message on channel: {}", new String(pattern));
         try {
-            Map<String, String> data = objectMapper.readValue(message.getBody(), Map.class);
+            Map<String, String> data = objectMapper.readValue(message.getBody(), new TypeReference<>() {});
             Long videoId = Long.parseLong(data.get("videoId"));
             Long likeCount = Long.parseLong(data.get("likeCount"));
             log.info("Received like:count message: videoId={}, likeCount={}", videoId, likeCount);

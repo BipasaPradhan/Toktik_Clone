@@ -53,6 +53,9 @@ public class Video {
     @Column(name = "view_count", nullable = false, columnDefinition = "BIGINT DEFAULT 0")
     private Long viewCount = 0L;
 
+    @Column(name = "like_count", nullable = false, columnDefinition = "BIGINT DEFAULT 0")
+    private Long likeCount = 0L;
+
     public Video(String userId, String title, String description, String objectKey, VideoStatus status, String visibility) {
         this.userId = userId;
         this.title = title;
@@ -62,5 +65,6 @@ public class Video {
         this.visibility = visibility;
         this.uploadTime = LocalDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh"));
         this.viewCount = 0L;
+        this.likeCount = 0L;
     }
 }
