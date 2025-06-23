@@ -13,30 +13,29 @@ s3_client = S3Client()
     name='chunking.chunk_video_to_hls',
     queue='chunking_queue',
     autoretry_for=(
-        ClientError,  
-        ffmpeg.Error,  
-        OSError,      
+            ClientError,
+            ffmpeg.Error,
+            OSError,
     ),
     retry_kwargs={'max_retries': 3, 'countdown': 30},
     retry_backoff=True,
     retry_jitter=True
 )
-def chunk_video_to_hls(converted_key, user_id, hls_playlist_key):
+def chunk_video_to_hls(convert_result, user_id, hls_playlist_key):
     video_id = os.path.basename(os.path.dirname(hls_playlist_key))
-    print(f"Starting chunking for video_id: {video_id}, user_id: {user_id}")
+    converted_key = convert_result["converted_key"]
+    duration = convert_result["duration"]
+    print(f"Starting chunking for video_id: {video_id}, user_id: {user_id}, duration: {duration}")
 
-    # Temporary paths in /tmp
     temp_dir = f"/tmp/video_chunk/{video_id}"
     input_path = f"{temp_dir}/input.mp4"
     output_dir = f"{temp_dir}/output"
     playlist_path = f"{output_dir}/playlist.m3u8"
 
-    # Ensure temporary directories exist
     os.makedirs(temp_dir, exist_ok=True)
     os.makedirs(output_dir, exist_ok=True)
     print(f"Created temporary directories: {temp_dir}, {output_dir}")
 
-    # Download converted.mp4 from S3
     print(f"Downloading converted video from R2: {converted_key}")
     max_retries = 5
     for attempt in range(max_retries):
@@ -52,7 +51,6 @@ def chunk_video_to_hls(converted_key, user_id, hls_playlist_key):
                 raise e
     print(f"Successfully downloaded converted video to {input_path}")
 
-    # Generate HLS segments
     try:
         stream = ffmpeg.input(input_path)
         stream = ffmpeg.output(
@@ -71,7 +69,6 @@ def chunk_video_to_hls(converted_key, user_id, hls_playlist_key):
         error_msg = e.stderr.decode('utf-8', errors='ignore') if e.stderr else "No stderr output from FFmpeg"
         raise Exception(f"FFmpeg error during HLS chunking: {error_msg}")
 
-    # Upload HLS files to S3
     print(f"Uploading HLS playlist to R2: {hls_playlist_key}")
     try:
         s3_client.upload_file(playlist_path, "toktikp2", hls_playlist_key)
@@ -90,7 +87,6 @@ def chunk_video_to_hls(converted_key, user_id, hls_playlist_key):
             except Exception as e:
                 print(f"Failed to upload segment {filename} to R2: {segment_key}: {e}")
 
-    # Cleanup
     for filename in os.listdir(output_dir):
         file_path = os.path.join(output_dir, filename)
         if os.path.isfile(file_path):
@@ -106,10 +102,9 @@ def chunk_video_to_hls(converted_key, user_id, hls_playlist_key):
         except Exception as e:
             print(f"Failed to remove temporary file {input_path}: {e}")
 
-    # Remove the empty output directory
     if os.path.exists(output_dir) and not os.listdir(output_dir):
         shutil.rmtree(output_dir)
         print(f"Removed empty output directory {output_dir}")
 
     print(f"Chunking completed for video_id: {video_id}")
-    return hls_playlist_key
+    return {"hls_playlist_key": hls_playlist_key, "duration": duration}

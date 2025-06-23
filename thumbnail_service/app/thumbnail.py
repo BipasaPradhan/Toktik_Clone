@@ -9,22 +9,19 @@ app = Celery('thumbnail', broker='redis://redis:6379/0', backend='redis://redis:
 s3_client = S3Client()
 
 @app.task(
-    name='thumbnail.extract_thumbnail', 
+    name='thumbnail.extract_thumbnail',
     queue='thumbnail_queue',
-    autoretry_for=(
-        ClientError,  
-        ffmpeg.Error,  
-        OSError,      
-    ),
+    autoretry_for=(ClientError, ffmpeg.Error, OSError),
     retry_kwargs={'max_retries': 3, 'countdown': 30},
     retry_backoff=True,
     retry_jitter=True
 )
-def extract_thumbnail(converted_key, user_id, thumbnail_key):
+def extract_thumbnail(convert_result, user_id, thumbnail_key):
     video_id = os.path.basename(os.path.dirname(thumbnail_key))
-    print(f"Starting thumbnail extraction for video_id: {video_id}, user_id: {user_id}")
+    converted_key = convert_result["converted_key"]
+    duration = convert_result["duration"]
+    print(f"Starting thumbnail extraction for video_id: {video_id}, user_id: {user_id}, duration: {duration}")
 
-    # Create temp directories
     temp_dir = f"/tmp/video_thumb/{video_id}"
     input_path = f"{temp_dir}/input.mp4"
     output_path = f"{temp_dir}/thumb.jpg"
@@ -32,7 +29,6 @@ def extract_thumbnail(converted_key, user_id, thumbnail_key):
     os.makedirs(temp_dir, exist_ok=True)
     print(f"Created temporary directory: {temp_dir}")
 
-    # Download converted.mp4 from R2
     print(f"Downloading converted video from R2: {converted_key}")
     try:
         s3_client.download_file(converted_key, input_path)
@@ -49,7 +45,6 @@ def extract_thumbnail(converted_key, user_id, thumbnail_key):
         error_msg = e.stderr.decode() if e.stderr else "No stderr output from FFmpeg"
         raise Exception(f"FFmpeg error during thumbnail extraction: {error_msg}")
 
-    # Upload to R2
     print(f"Uploading thumbnail to R2: {thumbnail_key}")
     try:
         s3_client.upload_file(output_path, "toktikp2", thumbnail_key)
@@ -57,7 +52,6 @@ def extract_thumbnail(converted_key, user_id, thumbnail_key):
         raise Exception(f"Error uploading thumbnail to R2: {e}")
     print(f"Uploaded thumbnail to R2: {thumbnail_key}")
 
-    # Cleanup
     for file_path in [input_path, output_path]:
         if os.path.exists(file_path):
             try:
@@ -66,10 +60,9 @@ def extract_thumbnail(converted_key, user_id, thumbnail_key):
             except Exception as e:
                 print(f"Failed to remove temporary file {file_path}: {e}")
 
-    # Remove the empty temporary directory
     if os.path.exists(temp_dir) and not os.listdir(temp_dir):
         shutil.rmtree(temp_dir)
         print(f"Removed empty temporary directory {temp_dir}")
 
     print(f"Thumbnail extraction completed for video_id: {video_id}")
-    return thumbnail_key
+    return {"thumbnail_key": thumbnail_key, "duration": duration}
