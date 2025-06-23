@@ -39,6 +39,7 @@
                     :src="video.thumbnailUrl"
                   />
                   <div v-else class="thumbnail placeholder-bg" />
+                  <span class="duration">{{ formatDuration(video.duration) }}</span>
                 </div>
               </v-col>
 
@@ -154,6 +155,7 @@
     viewCount: number;
     objectKey: string;
     likeCount?: number;
+    duration?: number;
   }
 
   // Reactive state
@@ -199,6 +201,15 @@
   const formatDate = (dateString: string): string => {
     return new Date(dateString).toLocaleDateString()
   }
+
+  // Format duration to MM:SS (max 90 seconds)
+  const formatDuration = (duration: number | undefined): string => {
+    if (duration === undefined || duration === null) return '0:00';
+    const totalSeconds = Math.min(Math.round(duration), 90); // Cap at 90 seconds
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
 
   // Open edit dialog with video data
   const openEditDialog = (video: Video) => {
@@ -456,6 +467,17 @@
   height: 100%;
   object-fit: cover;
   border-radius: 8px 0 0 8px;
+}
+
+.duration {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background-color: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.75rem;
 }
 
 .video-list {

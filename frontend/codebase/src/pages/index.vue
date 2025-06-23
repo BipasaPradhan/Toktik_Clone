@@ -35,6 +35,7 @@
           <v-card class="video-card" elevation="2" @click="goToWatch(video.id)">
             <div class="thumbnail-wrapper">
               <img alt="Video Thumbnail" class="thumbnail" :src="thumbnailUrls[video.id] || 'https://via.placeholder.com/150'">
+              <span class="duration">{{ formatDuration(durations[video.id]) }}</span>
             </div>
             <v-card-title class="video-title">{{ video.title }}</v-card-title>
             <v-card-text class="video-meta">
@@ -83,6 +84,7 @@
     status: string
     viewCount: number
     likeCount?: number
+    duration?: number // Add duration to interface
   }
 
   // Reactive state
@@ -90,6 +92,7 @@
   const loading = ref(true)
   const page = ref(1)
   const thumbnailUrls = ref<Record<number, string>>({})
+  const durations = ref<Record<number, number | null>>({}) // Store durations
   let pollInterval: number | null = null
   const isPolling = ref(false)
   const subscriptions = ref<Map<string, StompSubscription>>(new Map());
@@ -109,7 +112,7 @@
       const newVideos: Video[] = response.data.videos || []
       console.log('Parsed Videos:', JSON.stringify(newVideos, null, 2))
       videos.value = [...videos.value, ...newVideos]
-      // Pre-fetch thumbnails
+      // Pre-fetch thumbnails and durations
       await Promise.all(newVideos.map(video => fetchThumbnail(video.id)))
       await Promise.all(newVideos.map(video => patchViewCount(video.id)));
 
@@ -126,7 +129,7 @@
     }
   }
 
-  // Fetch and cache thumbnail URL
+  // Fetch and cache thumbnail URL and duration
   const fetchThumbnail = async (videoId: number) => {
     try {
       const userId = authStore.username || ''
@@ -136,16 +139,27 @@
       })
       console.log('Thumbnail Response:', JSON.stringify(response.data, null, 2))
       thumbnailUrls.value[videoId] = response.data.thumbnailUrl || 'https://via.placeholder.com/150'
+      durations.value[videoId] = response.data.duration || null // Store duration
     } catch (error) {
       const axiosError = error as AxiosError
       console.error('Error fetching thumbnail for videoId', videoId, axiosError.message, axiosError.response?.data)
       thumbnailUrls.value[videoId] = 'https://via.placeholder.com/150'
+      durations.value[videoId] = null // Default to null on error
     }
   }
 
   // Format upload time
   const formatDate = (dateString: string): string => {
     return new Date(dateString).toLocaleDateString()
+  }
+
+  // Format duration to MM:SS (max 90 seconds)
+  const formatDuration = (duration: number | null): string => {
+    if (duration === null) return '0:00'
+    const totalSeconds = Math.min(Math.round(duration), 90) // Cap at 90 seconds
+    const minutes = Math.floor(totalSeconds / 60)
+    const seconds = totalSeconds % 60
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`
   }
 
   // Navigation methods
@@ -193,6 +207,7 @@
     videos.value = [] // Clear current videos
     fetchVideos() // Fetch fresh data
   }
+
   const connectWebSocket = () => {
     const socket = new SockJS('/ws');
     stompClient.value = new Client({
@@ -275,7 +290,6 @@
     }
   };
 
-
   // Clean up WebSocket connection
   const disconnectWebSocket = () => {
     if (stompClient.value) {
@@ -300,7 +314,7 @@
       pollInterval = null
       isPolling.value = false
     }
-    disconnectWebSocket();
+    disconnectWebSocket()
   })
 </script>
 
@@ -387,6 +401,17 @@
   border-radius: 8px 8px 0 0;
 }
 
+.duration {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background-color: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+}
+
 .video-title {
   font-size: 1rem;
   color: #2b2119;
@@ -413,7 +438,6 @@
 .toc-logo:hover {
   color: #800020 !important;
 }
-
 </style>
 
 <route lang="json5">
