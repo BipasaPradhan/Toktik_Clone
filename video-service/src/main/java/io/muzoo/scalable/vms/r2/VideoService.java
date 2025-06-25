@@ -302,6 +302,16 @@ public class VideoService {
                 VideoLike like = new VideoLike(videoId, userId);
                 videoLikeRepository.save(like);
                 video.setLikeCount(video.getLikeCount() + 1);
+
+                // Add user to VIP set
+                String vipKey = "video:" + videoId + ":vips";
+                Long added = redisTemplate.opsForSet().add(vipKey, userId);
+
+                if (added != null && added == 1L) {
+                    System.out.println("User " + userId + " added to VIP set for video " + videoId);
+                } else {
+                    System.out.println("User " + userId + " was already a VIP for video " + videoId);
+                }
             }
             videoRepository.save(video);
         } catch (DataIntegrityViolationException e) {

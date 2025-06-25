@@ -1,15 +1,20 @@
 package io.muzoo.scalable.vms.comments;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.muzoo.scalable.vms.CommentUtils.AddCommentRequestDTO;
 import io.muzoo.scalable.vms.CommentUtils.CommentResponseDTO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/videos")
@@ -38,5 +43,6 @@ public class VideoCommentController {
         System.out.println("Received request to get comments for videoId: " + videoId);
         return ResponseEntity.ok(commentService.getCommentsForVideo(videoId));
     }
+
 
 }

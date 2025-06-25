@@ -3,6 +3,7 @@ package io.muzoo.scalable.web_socket.redis;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.muzoo.scalable.web_socket.listener.CommentMessageListener;
 import io.muzoo.scalable.web_socket.listener.LikeCountMessageListener;
+import io.muzoo.scalable.web_socket.listener.PerUserNotificationListener;
 import io.muzoo.scalable.web_socket.listener.ViewCountMessageListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,12 +22,14 @@ public class RedisConfig {
     public RedisMessageListenerContainer redisContainer(RedisConnectionFactory connectionFactory,
                                                         MessageListenerAdapter viewCountListenerAdapter,
                                                         MessageListenerAdapter likeCountListenerAdapter,
-                                                        MessageListenerAdapter commentListenerAdapter) {
+                                                        MessageListenerAdapter commentListenerAdapter,
+                                                        MessageListenerAdapter perUserNotificationListenerAdapter) {
         RedisMessageListenerContainer container = new RedisMessageListenerContainer();
         container.setConnectionFactory(connectionFactory);
         container.addMessageListener(viewCountListenerAdapter, new PatternTopic("view:count"));
         container.addMessageListener(likeCountListenerAdapter, new PatternTopic("like:count"));
         container.addMessageListener(commentListenerAdapter, new PatternTopic("comment:new"));
+        container.addMessageListener(perUserNotificationListenerAdapter, new PatternTopic("notification:user:*"));
         container.setErrorHandler(e -> logger.error("Error in Redis listener container: {}", e.getMessage(), e));
         return container;
     }
@@ -49,6 +52,11 @@ public class RedisConfig {
     @Bean
     public MessageListenerAdapter commentListenerAdapter(CommentMessageListener commentListener) {
         return new MessageListenerAdapter(commentListener, "onMessage");
+    }
+
+    @Bean
+    public MessageListenerAdapter perUserNotificationListenerAdapter(PerUserNotificationListener listener) {
+        return new MessageListenerAdapter(listener, "onMessage");
     }
 
 }

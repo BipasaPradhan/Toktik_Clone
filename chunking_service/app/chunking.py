@@ -5,6 +5,7 @@ import time
 import shutil
 from s3_client import S3Client
 from botocore.exceptions import ClientError
+from celery import current_task
 
 app = Celery('chunking', broker='redis://redis:6379/0', backend='redis://redis:6379/0')
 s3_client = S3Client()
@@ -27,7 +28,8 @@ def chunk_video_to_hls(convert_result, user_id, hls_playlist_key):
     duration = convert_result["duration"]
     print(f"Starting chunking for video_id: {video_id}, user_id: {user_id}, duration: {duration}")
 
-    temp_dir = f"/tmp/video_chunk/{video_id}"
+    task_id = current_task.request.id
+    temp_dir = f"/tmp/video_chunk/{video_id}/{task_id}"
     input_path = f"{temp_dir}/input.mp4"
     output_dir = f"{temp_dir}/output"
     playlist_path = f"{output_dir}/playlist.m3u8"

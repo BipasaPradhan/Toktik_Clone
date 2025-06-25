@@ -1,14 +1,21 @@
 package io.muzoo.scalable.vms.comments;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.muzoo.scalable.vms.CommentUtils.*;
+import io.muzoo.scalable.vms.Video;
 import io.muzoo.scalable.vms.VideoRepository;
+import io.muzoo.scalable.vms.notifications.NotificationService;
 import io.muzoo.scalable.vms.redis.RedisPublisher;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -18,6 +25,8 @@ public class VideoCommentService {
     private final VideoRepository videoRepository;
     private final RedisPublisher redisPublisher;
     private final HtmlSanitizer htmlSanitizer;
+    private final RedisTemplate<String, Object> redisTemplate;
+    private final NotificationService notificationService;
 
     @Transactional
     public CommentResponseDTO addComment(Long videoId, String userId, AddCommentRequestDTO request) {
@@ -36,7 +45,18 @@ public class VideoCommentService {
         );
         redisPublisher.publish("comment:new", message);
 
-        System.out.println("Published comment to Redis for videoId: " + videoId + ", userId: " + userId);
+        // Add user to VIP set
+        String vipKey = "video:" + videoId + ":vips";
+        Long added = redisTemplate.opsForSet().add(vipKey, userId);
+
+        if (added != null && added == 1L) {
+            System.out.println("User " + userId + " added to VIP set for video " + videoId);
+        } else {
+            System.out.println("User " + userId + " was already a VIP for video " + videoId);
+        }
+
+        // Trigger notification for VIPs
+        notificationService.notifyVipUsersComment(videoId, userId);
 
         return new CommentResponseDTO(
                 saved.getId(),
@@ -60,6 +80,5 @@ public class VideoCommentService {
                 ))
                 .collect(Collectors.toList());
     }
-
 
 }

@@ -4,6 +4,7 @@ import os
 import shutil
 from .s3_client import S3Client
 from botocore.exceptions import ClientError
+from celery import current_task
 
 app = Celery('convert', broker='redis://redis:6379/0', backend='redis://redis:6379/0')
 s3_client = S3Client()
@@ -21,7 +22,8 @@ s3_client = S3Client()
     retry_jitter=True
 )
 def convert_video(video_id, s3_key, converted_key, user_id):
-    temp_dir = f"/tmp/video_convert/{video_id}"
+    task_id = current_task.request.id
+    temp_dir = f"/tmp/video_convert/{video_id}/{task_id}"
     input_path = f"{temp_dir}/input.mp4"
     output_path = f"{temp_dir}/converted.mp4"
 
@@ -31,6 +33,7 @@ def convert_video(video_id, s3_key, converted_key, user_id):
     s3_client.download_file(s3_key, input_path)
 
     duration = None
+    print(f"[{task_id}] Starting conversion for video_id={video_id}")
     try:
         probe = ffmpeg.probe(input_path)
         duration = float(probe['format']['duration'])
@@ -41,7 +44,7 @@ def convert_video(video_id, s3_key, converted_key, user_id):
 
     try:
         stream = ffmpeg.input(input_path)
-        stream = ffmpeg.output(stream, output_path, vcodec='libx264', preset='medium')
+        stream = ffmpeg.output(stream, output_path, vcodec='libx264', preset='medium').overwrite_output()
         ffmpeg.run(stream)
     except ffmpeg.Error as e:
         error_msg = e.stderr.decode() if e.stderr else "No stderr output from FFmpeg"

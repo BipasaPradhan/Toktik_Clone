@@ -5,7 +5,7 @@
       <!-- Left: Toctik logo -->
       <Logo @click="goHome" />
 
-      <!-- Right: Manage + Logout buttons -->
+      <!-- Right: Manage + Logout buttons + Notification Bell -->
       <div class="top-buttons">
         <v-btn class="manage-btn" variant="outlined" @click="goToManage">
           Manage
@@ -13,6 +13,7 @@
         <v-btn class="logout-btn" variant="outlined" @click="logout">
           Logout
         </v-btn>
+        <NotificationBell />
       </div>
     </div>
 
@@ -146,6 +147,7 @@
   import type { ErrorData } from 'hls.js';
   import { Client } from '@stomp/stompjs';
   import SockJS from 'sockjs-client';
+  import NotificationBell from '@/components/NotificationBell.vue';
 
   // Define the route params type
   interface RouteParams {
