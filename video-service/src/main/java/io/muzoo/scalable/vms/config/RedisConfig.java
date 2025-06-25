@@ -37,6 +37,7 @@ public class RedisConfig {
         return template;
     }
 
+
     @Bean
     public RedisMessageListenerContainer redisContainer(RedisConnectionFactory connectionFactory,
                                                         MessageListenerAdapter videoListenerAdapter) {

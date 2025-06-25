@@ -13,6 +13,7 @@
         <v-btn class="logout-btn" variant="outlined" @click="logout">
           Logout
         </v-btn>
+        <NotificationBell />
       </div>
     </div>
 
@@ -70,6 +71,7 @@
   import axios, { AxiosError } from 'axios'
   import { Client, type StompSubscription } from '@stomp/stompjs'
   import SockJS from 'sockjs-client'
+  import NotificationBell from '@/components/NotificationBell.vue';
 
   const authStore = useAuthStore()
   const router = useRouter()
@@ -360,6 +362,7 @@
 .top-buttons {
   display: flex;
   gap: 12px;
+  align-items: center;
 }
 
 .logout-btn,

@@ -41,14 +41,23 @@
           </div>
           <div class="video-details">
             <h2 class="video-title">{{ videoDetails.title || 'No Title Available' }}</h2>
-            <p class="video-meta">Views: {{ videoDetails.viewCount }}</p>
-            <p class="video-meta">{{ videoDetails.userId || 'Unknown User' }} • {{ formatDate(videoDetails.uploadTime) }}</p>
             <p class="video-description">{{ videoDetails.description || 'No Description Available' }}</p>
-
-            <!-- Like Button and Count -->
-            <div class="like-section">
+            <p class="video-meta">{{ videoDetails.userId || 'Unknown User' }} • {{ formatDate(videoDetails.uploadTime) }}</p>
+            <div class="interaction-section">
+              <div class="stats-group">
+                <p class="video-meta">
+                  <v-icon>mdi-eye</v-icon>
+                  {{ videoDetails.viewCount }}
+                </p>
+                <span class="separator">|</span>
+                <p class="like-count-show">
+                  <v-icon>mdi-heart</v-icon>
+                  <span class="like-count">{{ likeCount }}</span>
+                </p>
+              </div>
               <v-btn
                 class="like-btn"
+                :class="{ 'liked': isLiked }"
                 :color="isLiked ? '#800020' : 'grey'"
                 :disabled="toggleLikeLoading"
                 variant="outlined"
@@ -57,7 +66,6 @@
                 <v-icon>{{ isLiked ? 'mdi-heart' : 'mdi-heart-outline' }}</v-icon>
                 Like
               </v-btn>
-              <span class="like-count">{{ likeCount }}</span>
             </div>
             <v-alert v-if="likeError" class="mt-2" :text="likeError" type="error" />
           </div>
@@ -572,6 +580,7 @@
 .top-buttons {
   display: flex;
   gap: 12px;
+  align-items: center;
 }
 
 .logout-btn,
@@ -622,6 +631,9 @@
   font-size: 1rem;
   color: #666;
   margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .video-description {
@@ -630,19 +642,63 @@
   line-height: 1.5;
 }
 
-.like-section {
-  display: flex;
-  align-items: center;
-  margin-top: 10px;
+.video-meta .v-icon,
+.like-count-show .v-icon {
+  color: #2b2119;
 }
 
-.like-btn {
-  margin-right: 10px;
+.interaction-section {
+  display: flex;
+  align-items: center;
+  gap: 8px; // Maintains spacing between stats group and like button
+  margin-bottom: 10px;
+}
+
+.stats-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.separator {
+  font-size: 1rem;
+  color: #666;
+  margin: 0 4px;
+}
+
+.like-count-show {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
 }
 
 .like-count {
   font-size: 1rem;
   color: #333;
+}
+
+.like-btn {
+  color: #2b2119 !important;
+  background-color: transparent !important;
+  border: 1px solid #c4b5a3 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+
+  &:hover {
+    background-color: rgba(212, 196, 177, 0.1) !important;
+  }
+
+  &.liked {
+    color: #800020 !important;
+    .v-icon {
+      color: #800020 !important;
+    }
+  }
 }
 
 .comments-section {

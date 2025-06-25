@@ -10,6 +10,7 @@
         <v-btn class="upload-btn" variant="outlined" @click="goToUpload">
           Upload New Video
         </v-btn>
+        <NotificationBell />
       </div>
     </div>
 
@@ -135,6 +136,7 @@
   import { Client, type StompSubscription } from '@stomp/stompjs'
   import SockJS from 'sockjs-client'
   import Logo from '@/components/Logo.vue'
+  import NotificationBell from '@/components/NotificationBell.vue';
 
   const router = useRouter()
   const authStore = useAuthStore()
@@ -433,6 +435,7 @@
 .top-buttons {
   display: flex;
   gap: 12px;
+  align-items: center;
 }
 
 .upload-btn {

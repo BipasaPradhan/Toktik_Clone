@@ -7,7 +7,6 @@
       offset="10"
       @update:model-value="onNotificationToggle"
     >
-      <!-- Activator (bell icon with badge) -->
       <template #activator="{ props }">
         <v-badge
           v-if="unreadCount > 0"
@@ -19,18 +18,12 @@
             <v-icon>mdi-bell</v-icon>
           </v-btn>
         </v-badge>
-        <v-btn
-          v-else
-          v-bind="props"
-          icon
-          variant="outlined"
-        >
+        <v-btn v-else v-bind="props" icon variant="outlined">
           <v-icon>mdi-bell</v-icon>
         </v-btn>
       </template>
 
-      <!-- Notifications dropdown -->
-      <v-card class="notification-panel" max-width="300" min-width="250">
+      <v-card class="notification-panel" max-width="320" min-width="260">
         <v-card-title class="notification-title">Notifications</v-card-title>
         <v-divider />
         <v-list v-if="notifications.length > 0" class="notification-list">
@@ -38,14 +31,19 @@
             v-for="(notification, index) in notifications"
             :key="index"
             :class="{ 'unread-item': !notification.read }"
-            @click="markAsRead(index)"
+            @click="handleNotificationClick(notification, index)"
           >
             <v-list-item-title>{{ notification.message }}</v-list-item-title>
-            <v-list-item-subtitle>{{ formatDate(notification.timestamp) }}</v-list-item-subtitle>
+            <v-list-item-subtitle>
+              {{ formatDate(notification.timestamp) }} —
+              <span :class="notification.read ? 'read-label' : 'unread-label'">
+                {{ notification.read ? 'Read' : 'Unread' }}
+              </span>
+            </v-list-item-subtitle>
           </v-list-item>
         </v-list>
         <v-card-text v-else class="no-notifications">
-          No new notifications.
+          No notifications yet.
         </v-card-text>
       </v-card>
     </v-menu>
@@ -54,31 +52,88 @@
 
 <script setup lang="ts">
   import { onMounted, onUnmounted, ref, watch } from 'vue';
+  import { useRouter } from 'vue-router';
+  import { useAuthStore } from '@/stores/auth';
   import { Client } from '@stomp/stompjs';
   import SockJS from 'sockjs-client';
-  import { useAuthStore } from '@/stores/auth';
+  import axios from 'axios';
+
+  type Notification = {
+    message: string;
+    timestamp: string;
+    read: boolean;
+    videoId?: string;
+  };
 
   const authStore = useAuthStore();
   const userId = authStore.username;
+  const router = useRouter();
 
   const showNotifications = ref(false);
-  const notifications = ref<{ message: string; timestamp: string; read: boolean }[]>([]);
+  const notifications = ref<Notification[]>([]);
   const unreadCount = ref(0);
   let stompClient: Client | null = null;
 
-  const onNotificationToggle = (val: boolean) => {
-    showNotifications.value = val;
-    if (val) markAllAsRead();
+  const extractVideoId = (msg: string): string | undefined => {
+    const match = msg.match(/video '.*?' \(ID: (\d+)\)/);
+    return match ? match[1] : undefined;
   };
 
-  const markAsRead = (index: number) => {
+  const fetchNotifications = async () => {
+    if (!userId) return;
+    try {
+      const response = await axios.get('/videos/notifications', {
+        headers: { 'X-User-Id': userId },
+      });
+
+      notifications.value = (response.data as Notification[])
+        .map(n => ({
+          message: n.message,
+          timestamp: n.timestamp,
+          read: String(n.read) === 'true',
+          videoId: n.videoId || extractVideoId(n.message),
+        }))
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+        .slice(0, 10);
+
+      unreadCount.value = notifications.value.filter(n => !n.read).length;
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    }
+  };
+
+  const handleNotificationClick = async (notification: Notification, index: number) => {
+    await markAsRead(index);
+    if (notification.videoId) {
+      router.push(`/watch/${notification.videoId}`);
+    } else {
+      console.warn('Notification does not contain a videoId');
+    }
+  };
+
+  const markAsRead = async (index: number) => {
+    const notif = notifications.value[index];
+    if (notif.read) return;
+
     notifications.value[index].read = true;
     unreadCount.value = notifications.value.filter(n => !n.read).length;
+    try {
+      await axios.post(`/videos/notifications/${index}/read`, {}, {
+        headers: { 'X-User-Id': userId },
+      });
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+      // revert on error
+      notifications.value[index].read = false;
+      unreadCount.value = notifications.value.filter(n => !n.read).length;
+    }
   };
 
-  const markAllAsRead = () => {
-    notifications.value.forEach(n => (n.read = true));
-    unreadCount.value = 0;
+  const onNotificationToggle = (val: boolean) => {
+    showNotifications.value = val;
+    if (val) {
+      unreadCount.value = notifications.value.filter(n => !n.read).length;
+    }
   };
 
   const formatDate = (dateString: string): string => {
@@ -91,22 +146,26 @@
 
     const socket = new SockJS('/ws');
     stompClient = new Client({
-      'webSocketFactory': () => socket,
-      'reconnectDelay': 5000,
-      'debug': str => console.log('STOMP (NotificationBell):', str),
+      webSocketFactory: () => socket,
+      reconnectDelay: 5000,
+      debug: str => console.log('STOMP (NotificationBell):', str),
     });
 
     stompClient.onConnect = () => {
       console.log(`Connected to WebSocket as user ${userId}`);
       stompClient!.subscribe(`/user/${userId}/notifications`, message => {
-        const notification = {
-          message: message.body,
-          timestamp: new Date().toISOString(),
-          read: false,
+        const payload = JSON.parse(message.body);
+        const newNotification: Notification = {
+          message: payload.message,
+          timestamp: payload.timestamp,
+          read: String(payload.read) === 'true',
+          videoId: payload.videoId || extractVideoId(payload.message),
         };
-        notifications.value.unshift(notification);
+        notifications.value.unshift(newNotification);
+        notifications.value = notifications.value
+          .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+          .slice(0, 10);
         unreadCount.value = notifications.value.filter(n => !n.read).length;
-        console.log('Received notification:', notification);
       });
     };
 
@@ -121,11 +180,11 @@
     if (stompClient) {
       stompClient.deactivate();
       stompClient = null;
-      console.log('Disconnected from WebSocket');
     }
   };
 
   onMounted(() => {
+    fetchNotifications();
     connectWebSocket();
   });
 
@@ -135,7 +194,12 @@
 
   watch(() => authStore.username, newUserId => {
     disconnectWebSocket();
-    if (newUserId) connectWebSocket();
+    notifications.value = [];
+    unreadCount.value = 0;
+    if (newUserId) {
+      fetchNotifications();
+      connectWebSocket();
+    }
   });
 </script>
 
@@ -164,6 +228,16 @@
 
 .unread-item {
   background-color: #f5f5f0;
+  font-weight: bold;
+}
+
+.read-label {
+  color: #999;
+  font-style: italic;
+}
+
+.unread-label {
+  color: #d50000;
   font-weight: bold;
 }
 

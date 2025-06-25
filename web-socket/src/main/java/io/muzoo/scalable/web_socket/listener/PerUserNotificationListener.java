@@ -20,19 +20,20 @@ public class PerUserNotificationListener implements MessageListener {
     public void onMessage(Message message, byte[] pattern) {
         System.out.println("Received Redis message on channel: " + new String(pattern));
         try {
-            Map<String, String> data = objectMapper.readValue(message.getBody(), new TypeReference<>() {});
-            String userId = data.get("userId");
-            String msg = data.get("message");
-            System.out.println("Received notification:user message: userId=" + userId + ", message=" + msg);
-            if (userId != null && msg != null) {
-                messagingTemplate.convertAndSend("/user/" + userId + "/notifications", msg);
-                System.out.println("Notified user " + userId + " via WebSocket: " + msg);
-            }
-            else {
-                System.out.println("Invalid notification data: userId=" + userId + ", message=" + msg);
+            Map<String, Object> data = objectMapper.readValue(message.getBody(), new TypeReference<>() {});
+            String userId = (String) data.get("userId");
+
+            data.put("read", Boolean.parseBoolean(String.valueOf(data.get("read"))));
+
+            if (userId != null) {
+                messagingTemplate.convertAndSend("/user/" + userId + "/notifications", data);
+                System.out.println("Notified user " + userId + " via WebSocket: " + data);
+            } else {
+                System.out.println("Invalid notification data: missing userId");
             }
         } catch (Exception e) {
             System.out.println("Error in PerUserNotificationListener: " + e.getMessage());
         }
     }
+
 }

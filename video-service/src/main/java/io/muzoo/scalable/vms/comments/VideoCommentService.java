@@ -10,6 +10,7 @@ import io.muzoo.scalable.vms.redis.RedisPublisher;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -25,7 +26,7 @@ public class VideoCommentService {
     private final VideoRepository videoRepository;
     private final RedisPublisher redisPublisher;
     private final HtmlSanitizer htmlSanitizer;
-    private final RedisTemplate<String, Object> redisTemplate;
+    private final StringRedisTemplate stringRedisTemplate;
     private final NotificationService notificationService;
 
     @Transactional
@@ -47,7 +48,7 @@ public class VideoCommentService {
 
         // Add user to VIP set
         String vipKey = "video:" + videoId + ":vips";
-        Long added = redisTemplate.opsForSet().add(vipKey, userId);
+        Long added = stringRedisTemplate.opsForSet().add(vipKey, userId);
 
         if (added != null && added == 1L) {
             System.out.println("User " + userId + " added to VIP set for video " + videoId);
