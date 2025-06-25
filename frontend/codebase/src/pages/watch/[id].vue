@@ -228,17 +228,17 @@
     const userId = authStore.username || 'default';
     try {
       const [detailsResponse, commentsResponse, likeResponse, viewCountResponse] = await Promise.all([
-        axios.get(`/videos/details`, {
+        axios.get(`/api/videos/details`, {
           params: { videoId, userId },
           headers: { 'X-User-Id': userId },
         }),
-        axios.get(`/videos/${videoId}/comments`, {
+        axios.get(`/api/videos/${videoId}/comments`, {
           headers: { 'X-User-Id': userId },
         }),
-        axios.get(`/videos/${videoId}/is-liked`, {
+        axios.get(`/api/videos/${videoId}/is-liked`, {
           headers: { 'X-User-Id': userId },
         }),
-        axios.get(`/videos/${videoId}/view-count-total`, {
+        axios.get(`/api/videos/${videoId}/view-count-total`, {
           headers: { 'X-User-Id': userId },
         }),
       ]);
@@ -339,7 +339,7 @@
     toggleLikeLoading.value = true;
     likeError.value = '';
     try {
-      const response = await axios.post(`/videos/${route.params.id}/like`, {}, {
+      const response = await axios.post(`/api/videos/${route.params.id}/like`, {}, {
         headers: { 'X-User-Id': authStore.username },
       });
       const { isLiked: newIsLiked, likeCount: newLikeCount, success, error } = response.data;
@@ -379,7 +379,7 @@
   const incrementViewCount = async () => {
     try {
       console.log(`Incrementing view count for videoId=${route.params.id}`);
-      await axios.post(`/videos/${route.params.id}/views`, {}, {
+      await axios.post(`/api/videos/${route.params.id}/views`, {}, {
         headers: { 'X-User-Id': authStore.username },
       });
       console.log(`Successfully incremented view for videoId=${route.params.id}`);
@@ -410,7 +410,7 @@
 
     try {
       console.log(`Submitting comment for videoId=${route.params.id}, userId=${authStore.username}`);
-      await axios.post(`/videos/${route.params.id}/comments`, {
+      await axios.post(`/api/videos/${route.params.id}/comments`, {
         content: newComment.value,
       }, {
         headers: { 'X-User-Id': authStore.username },

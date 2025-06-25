@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ums-config
+data:
+  UMS_DB_IP: "maria-db"
+  UMS_DB_PORT: "3306"
+  UMS_DB_NAME: "toctik"
+  UMS_DB_USERNAME: "dev"
+  SPRING_DATA_REDIS_HOST: "redis"
+  SPRING_DATA_REDIS_PORT: "6379"

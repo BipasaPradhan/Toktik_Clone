@@ -82,7 +82,7 @@
   const fetchNotifications = async () => {
     if (!userId) return;
     try {
-      const response = await axios.get('/videos/notifications', {
+      const response = await axios.get('/api/videos/notifications', {
         headers: { 'X-User-Id': userId },
       });
 
@@ -118,7 +118,7 @@
     notifications.value[index].read = true;
     unreadCount.value = notifications.value.filter(n => !n.read).length;
     try {
-      await axios.post(`/videos/notifications/${index}/read`, {}, {
+      await axios.post(`/api/videos/notifications/${index}/read`, {}, {
         headers: { 'X-User-Id': userId },
       });
     } catch (error) {

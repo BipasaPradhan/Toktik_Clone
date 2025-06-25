@@ -21,24 +21,13 @@ spec:
           image: ghcr.io/bipasapradhan/user-authentication-service:latest
           ports:
             - containerPort: 8080
-          env:
-            - name: UMS_DB_IP
-              value: "maria-db"
-            - name: UMS_DB_PORT
-              value: "3306"
-            - name: UMS_DB_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: mariadb-secret
-                  key: UMS_DB_PASSWORD
-            - name: UMS_DB_NAME
-              value: "toctik"
-            - name: UMS_DB_USERNAME
-              value: "dev"
-            - name: SPRING_DATA_REDIS_HOST
-              value: "redis"
-            - name: SPRING_DATA_REDIS_PORT
-              value: "6379"
+          envFrom:
+            - configMapRef:
+                name: ums-config
+            - secretRef:
+                name: jwt-secret
+            - secretRef:
+                name: mariadb-secret
 
           readinessProbe:
             tcpSocket:

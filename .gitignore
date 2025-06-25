@@ -24,3 +24,4 @@ k8s/celery-secret.yaml
 k8s/mariadb-secret.yaml
 k8s/ghcr-secret.yaml
 k8s/r2-secret.yaml
+k8s/jwt-secret.yaml
