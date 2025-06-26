@@ -18,7 +18,7 @@ spec:
         - name: video-processing-service
           image: ghcr.io/bipasapradhan/video-processing-service:latest
           ports:
-            - containerPort: 80
+            - containerPort: 8084
           env:
             - name: S3_ENDPOINT_URL
               valueFrom:

@@ -21,4 +21,4 @@ COPY . .
 RUN mkdir -p /app/counter && chown -R appuser:appuser /app
 USER appuser
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "80"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8084"]
