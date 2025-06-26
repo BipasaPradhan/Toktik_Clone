@@ -17,3 +17,13 @@ spec:
           image: redis:latest
           ports:
             - containerPort: 6379
+          args:
+            - "--appendonly"
+            - "yes"
+          volumeMounts:
+            - name: redis-storage
+              mountPath: /data
+      volumes:
+        - name: redis-storage
+          persistentVolumeClaim:
+            claimName: redis-pvc

@@ -24,6 +24,8 @@ spec:
           envFrom:
             - configMapRef:
                 name: ums-config
+            - configMapRef:
+                name: redis-config
             - secretRef:
                 name: jwt-secret
             - secretRef:

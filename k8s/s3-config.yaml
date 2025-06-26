@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: s3-config
+data:
+  S3_REGION: "auto" 
+  S3_BUCKET: "toktikp2"
+  TZ: "UTC"
+

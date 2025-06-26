@@ -58,8 +58,8 @@ public class NotificationService {
 
             try {
                 String notificationJson = objectMapper.writeValueAsString(notification);
-                stringRedisTemplate.opsForList().rightPush(notificationKey, notificationJson);
-                stringRedisTemplate.opsForList().trim(notificationKey, -50, -1);
+                stringRedisTemplate.opsForList().leftPush(notificationKey, notificationJson);
+                stringRedisTemplate.opsForList().trim(notificationKey, 0, 49);
 
                 String redisChannel = "notification:user:" + userId;
                 redisPublisher.publishString(redisChannel, notificationJson);

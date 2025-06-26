@@ -9,13 +9,6 @@ spec:
     - host: localhost
       http:
         paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: frontend
-                port:
-                  number: 80
           - path: /api/videos
             pathType: Prefix
             backend:
@@ -42,5 +35,19 @@ spec:
             backend:
               service:
                 name: video-processing-service
+                port:
+                  number: 80
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 80
+          - path: /ws
+            pathType: Prefix
+            backend:
+              service:
+                name: websocket-service
                 port:
                   number: 80
