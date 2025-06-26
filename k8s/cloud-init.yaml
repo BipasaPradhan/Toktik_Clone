@@ -1,0 +1,6 @@
+users:
+  - name: ubuntu
+    ssh-authorized-keys:
+      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC+4yQ39Jw/2NOvk+VL0LM6b8xZIU1jfbRsR5jb8/6Hy40QoYIe5TQ73k1zJW1eC2A8A8uP4Zcc7kaKpnVsPMXoZbJnPPZ5baGNdNAZrrfZd0Cv+CBuvIjEPYTg1Y3EiQbywgJmEU15Aj91RVggMVp9unCp5ZfbPVHLmIh1Wcb9hF7QHlCzRzPo98+jHQ/JBwqCPgxki/GvFetI/+SAy8JmG6ofnAG9kkB5JmO9Js7z0tyAedSkC8DEYrqV06sOM5zzhur/QqNpx1VkfeqOz1RkYdU7NyXvmKGQmE3z/ceWNCZ9PS18YDtePNQng4Df/e2qTey1DjqKWdxDQz+cd9o6ciggqX4mSgdaVOhYMcVBRYpG4Fm4wX7NqZDgU16gmePejmLS607GlAWbl07b6cu8Llxh6Ku4fyETGliUuasv4Iy4jncuoaHqryZ91ndNAozTMACATF6nzQwv9uzx9QJ7qnd257UWZFRqpUPYnV6EgWr41D/tE6omircgkpbkQeTKGLLuU7CcXAcvXB4e6y/9AfK0EvbQB+iFx0gU/gs3HEL+hy4lZM+VvFYGRq7NkaaIkRyvvP46uBaPB4c0d5iYS1aNZmOQpMR2iHksGkjY4TLtvdVA9R/Cz1sOQIWzCNg5ZUMKLbsuUuDZvX8nWd/owFz3BQKsZrksyHOoDTlCTQ== bipspradhan45@gmail.com
+    sudo: ['ALL=(ALL) NOPASSWD:ALL']
+    shell: /bin/bash

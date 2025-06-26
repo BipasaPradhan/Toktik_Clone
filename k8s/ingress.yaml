@@ -4,50 +4,52 @@ metadata:
   name: vms-ingress
   annotations:
     traefik.ingress.kubernetes.io/router.entrypoints: web
+    traefik.ingress.kubernetes.io/affinity: "true"
+    traefik.ingress.kubernetes.io/session-cookie-name: "websocket-session"
+    traefik.ingress.kubernetes.io/session-cookie-strategy: "cookie"
 spec:
   rules:
-    - host: localhost
-      http:
-        paths:
-          - path: /api/videos
-            pathType: Prefix
-            backend:
-              service:
-                name: video-service
-                port:
-                  number: 80
-          - path: /api
-            pathType: Prefix
-            backend:
-              service:
-                name: user-authentication-service
-                port:
-                  number: 80
-          - path: /process-video
-            pathType: Prefix
-            backend:
-              service:
-                name: video-processing-service
-                port:
-                  number: 80
-          - path: /reset-counter
-            pathType: Prefix
-            backend:
-              service:
-                name: video-processing-service
-                port:
-                  number: 80
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: frontend
-                port:
-                  number: 80
-          - path: /ws
-            pathType: Prefix
-            backend:
-              service:
-                name: websocket-service
-                port:
-                  number: 80
+      - http:
+          paths:
+            - path: /api/videos
+              pathType: Prefix
+              backend:
+                service:
+                  name: video-service
+                  port:
+                    number: 80
+            - path: /api
+              pathType: Prefix
+              backend:
+                service:
+                  name: user-authentication-service
+                  port:
+                    number: 80
+            - path: /process-video
+              pathType: Prefix
+              backend:
+                service:
+                  name: video-processing-service
+                  port:
+                    number: 80
+            - path: /reset-counter
+              pathType: Prefix
+              backend:
+                service:
+                  name: video-processing-service
+                  port:
+                    number: 80
+            - path: /
+              pathType: Prefix
+              backend:
+                service:
+                  name: frontend
+                  port:
+                    number: 80
+            - path: /ws
+              pathType: Prefix
+              backend:
+                service:
+                  name: websocket-service
+                  port:
+                    number: 80

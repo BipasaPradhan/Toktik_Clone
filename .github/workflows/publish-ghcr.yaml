@@ -18,6 +18,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
       - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
@@ -25,42 +31,66 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GH_PAT }}
 
-      - name: Build and Push User Authentication Service
+      - name: Build and Push User Authentication Service (multi-arch)
         run: |
-          docker build -t ghcr.io/bipasapradhan/user-authentication-service:latest -f user-authentication-service/Dockerfile user-authentication-service/
-          docker push ghcr.io/bipasapradhan/user-authentication-service:latest
+          docker buildx build --platform linux/amd64,linux/arm64 \
+            -t ghcr.io/bipasapradhan/user-authentication-service:latest \
+            -f user-authentication-service/Dockerfile \
+            --push \
+            user-authentication-service/
 
-      - name: Build and Push Frontend
+      - name: Build and Push Frontend (multi-arch)
         run: |
-          docker build -t ghcr.io/bipasapradhan/frontend-toctik:latest -f frontend/Dockerfile frontend/
-          docker push ghcr.io/bipasapradhan/frontend-toctik:latest
+          docker buildx build --platform linux/amd64,linux/arm64 \
+            -t ghcr.io/bipasapradhan/frontend-toctik:latest \
+            -f frontend/Dockerfile \
+            --push \
+            frontend/
 
-      - name: Build and Push Video Service
+      - name: Build and Push Video Service (multi-arch)
         run: |
-          docker build -t ghcr.io/bipasapradhan/video-service:latest -f video-service/Dockerfile video-service/
-          docker push ghcr.io/bipasapradhan/video-service:latest
+          docker buildx build --platform linux/amd64,linux/arm64 \
+            -t ghcr.io/bipasapradhan/video-service:latest \
+            -f video-service/Dockerfile \
+            --push \
+            video-service/
 
-      - name: Build and Push Convert Service
+      - name: Build and Push Convert Service (multi-arch)
         run: |
-          docker build -t ghcr.io/bipasapradhan/convert-service:latest -f convert_service/Dockerfile_convert convert_service/
-          docker push ghcr.io/bipasapradhan/convert-service:latest
+          docker buildx build --platform linux/amd64,linux/arm64 \
+            -t ghcr.io/bipasapradhan/convert-service:latest \
+            -f convert_service/Dockerfile_convert \
+            --push \
+            convert_service/
 
-      - name: Build and Push Chunking Service
+      - name: Build and Push Chunking Service (multi-arch)
         run: |
-          docker build -t ghcr.io/bipasapradhan/chunking-service:latest -f chunking_service/Dockerfile_chunking chunking_service/
-          docker push ghcr.io/bipasapradhan/chunking-service:latest
+          docker buildx build --platform linux/amd64,linux/arm64 \
+            -t ghcr.io/bipasapradhan/chunking-service:latest \
+            -f chunking_service/Dockerfile_chunking \
+            --push \
+            chunking_service/
 
-      - name: Build and Push Thumbnail Service
+      - name: Build and Push Thumbnail Service (multi-arch)
         run: |
-          docker build -t ghcr.io/bipasapradhan/thumbnail-service:latest -f thumbnail_service/Dockerfile_thumbnail thumbnail_service/
-          docker push ghcr.io/bipasapradhan/thumbnail-service:latest
+          docker buildx build --platform linux/amd64,linux/arm64 \
+            -t ghcr.io/bipasapradhan/thumbnail-service:latest \
+            -f thumbnail_service/Dockerfile_thumbnail \
+            --push \
+            thumbnail_service/
 
-      - name: Build and Push Video Processing Service
+      - name: Build and Push Video Processing Service (multi-arch)
         run: |
-          docker build -t ghcr.io/bipasapradhan/video-processing-service:latest -f video_processing_service/Dockerfile video_processing_service/
-          docker push ghcr.io/bipasapradhan/video-processing-service:latest
+          docker buildx build --platform linux/amd64,linux/arm64 \
+            -t ghcr.io/bipasapradhan/video-processing-service:latest \
+            -f video_processing_service/Dockerfile \
+            --push \
+            video_processing_service/
 
-      - name: Build and Push Websocket Service
+      - name: Build and Push Websocket Service (multi-arch)
         run: |
-          docker build -t ghcr.io/bipasapradhan/websocket-service:latest -f web-socket/Dockerfile web-socket/
-          docker push ghcr.io/bipasapradhan/websocket-service:latest
+          docker buildx build --platform linux/amd64,linux/arm64 \
+            -t ghcr.io/bipasapradhan/websocket-service:latest \
+            -f web-socket/Dockerfile \
+            --push \
+            web-socket/
