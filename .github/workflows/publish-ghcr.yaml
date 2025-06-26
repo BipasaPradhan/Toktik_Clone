@@ -1,4 +1,4 @@
-name: Docker Image CI for GHCR
+name: Build and Push Docker Images to GHCR
 
 on:
   push:
@@ -14,83 +14,66 @@ jobs:
     permissions:
       contents: read
       packages: write
+
+    strategy:
+      matrix:
+        service:
+          - name: user-authentication-service
+            context: user-authentication-service
+            dockerfile: user-authentication-service/Dockerfile
+            image: ghcr.io/bipasapradhan/user-authentication-service
+          - name: frontend-toctik
+            context: frontend
+            dockerfile: frontend/Dockerfile
+            image: ghcr.io/bipasapradhan/frontend-toctik
+          - name: video-service
+            context: video-service
+            dockerfile: video-service/Dockerfile
+            image: ghcr.io/bipasapradhan/video-service
+          - name: convert-service
+            context: convert_service
+            dockerfile: convert_service/Dockerfile_convert
+            image: ghcr.io/bipasapradhan/convert-service
+          - name: chunking-service
+            context: chunking_service
+            dockerfile: chunking_service/Dockerfile_chunking
+            image: ghcr.io/bipasapradhan/chunking-service
+          - name: thumbnail-service
+            context: thumbnail_service
+            dockerfile: thumbnail_service/Dockerfile_thumbnail
+            image: ghcr.io/bipasapradhan/thumbnail-service
+          - name: video-processing-service
+            context: video_processing_service
+            dockerfile: video_processing_service/Dockerfile
+            image: ghcr.io/bipasapradhan/video-processing-service
+          - name: websocket-service
+            context: web-socket
+            dockerfile: web-socket/Dockerfile
+            image: ghcr.io/bipasapradhan/websocket-service
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
+        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
 
-      - name: Log in to GHCR
+      - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GH_PAT }}
 
-      - name: Build and Push User Authentication Service (multi-arch)
+      - name: Build and Push ${{ matrix.service.name }} (multi-arch)
         run: |
-          docker buildx build --platform linux/amd64,linux/arm64 \
-            -t ghcr.io/bipasapradhan/user-authentication-service:latest \
-            -f user-authentication-service/Dockerfile \
-            --push \
-            user-authentication-service/
+          docker buildx build \
+            --platform linux/amd64,linux/arm64 \
+            -t ${{ matrix.service.image }}:latest \
+            -f ${{ matrix.service.dockerfile }} \
+            ${{ matrix.service.context }} \
+            --push
 
-      - name: Build and Push Frontend (multi-arch)
-        run: |
-          docker buildx build --platform linux/amd64,linux/arm64 \
-            -t ghcr.io/bipasapradhan/frontend-toctik:latest \
-            -f frontend/Dockerfile \
-            --push \
-            frontend/
-
-      - name: Build and Push Video Service (multi-arch)
-        run: |
-          docker buildx build --platform linux/amd64,linux/arm64 \
-            -t ghcr.io/bipasapradhan/video-service:latest \
-            -f video-service/Dockerfile \
-            --push \
-            video-service/
-
-      - name: Build and Push Convert Service (multi-arch)
-        run: |
-          docker buildx build --platform linux/amd64,linux/arm64 \
-            -t ghcr.io/bipasapradhan/convert-service:latest \
-            -f convert_service/Dockerfile_convert \
-            --push \
-            convert_service/
-
-      - name: Build and Push Chunking Service (multi-arch)
-        run: |
-          docker buildx build --platform linux/amd64,linux/arm64 \
-            -t ghcr.io/bipasapradhan/chunking-service:latest \
-            -f chunking_service/Dockerfile_chunking \
-            --push \
-            chunking_service/
-
-      - name: Build and Push Thumbnail Service (multi-arch)
-        run: |
-          docker buildx build --platform linux/amd64,linux/arm64 \
-            -t ghcr.io/bipasapradhan/thumbnail-service:latest \
-            -f thumbnail_service/Dockerfile_thumbnail \
-            --push \
-            thumbnail_service/
-
-      - name: Build and Push Video Processing Service (multi-arch)
-        run: |
-          docker buildx build --platform linux/amd64,linux/arm64 \
-            -t ghcr.io/bipasapradhan/video-processing-service:latest \
-            -f video_processing_service/Dockerfile \
-            --push \
-            video_processing_service/
-
-      - name: Build and Push Websocket Service (multi-arch)
-        run: |
-          docker buildx build --platform linux/amd64,linux/arm64 \
-            -t ghcr.io/bipasapradhan/websocket-service:latest \
-            -f web-socket/Dockerfile \
-            --push \
-            web-socket/
