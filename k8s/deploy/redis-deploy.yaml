@@ -12,6 +12,15 @@ spec:
       labels:
         app: redis
     spec:
+      securityContext:
+        fsGroup: 999
+      initContainers:
+        - name: fix-permissions
+          image: busybox
+          command: ["sh", "-c", "chown -R 999:999 /data"]
+          volumeMounts:
+            - name: redis-storage
+              mountPath: /data
       containers:
         - name: redis
           image: redis:latest
@@ -27,3 +36,4 @@ spec:
         - name: redis-storage
           persistentVolumeClaim:
             claimName: redis-pvc
+
