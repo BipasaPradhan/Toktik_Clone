@@ -650,7 +650,7 @@
 .interaction-section {
   display: flex;
   align-items: center;
-  gap: 8px; // Maintains spacing between stats group and like button
+  gap: 8px;
   margin-bottom: 10px;
 }
 
@@ -658,12 +658,34 @@
   display: flex;
   align-items: center;
   gap: 4px;
+  line-height: 1.5;
+  height: 24px;
+}
+
+.video-meta,
+.like-count-show {
+  display: inline-flex;
+  align-items: center;
+  margin: 0;
+  line-height: 1.5;
+  height: 24px;
+  vertical-align: middle;
+}
+
+.video-meta .v-icon,
+.like-count-show .v-icon {
+  font-size: 1.2rem;
+  line-height: 1.5;
+  vertical-align: middle;
 }
 
 .separator {
   font-size: 1rem;
   color: #666;
   margin: 0 4px;
+  line-height: 1.5;
+  height: 24px;
+  vertical-align: middle;
 }
 
 .like-count-show {
