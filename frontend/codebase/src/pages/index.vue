@@ -307,6 +307,7 @@
     fetchVideos()
     connectWebSocket();
     window.addEventListener('refreshVideos', refreshVideos)
+    updatePollingState(videos.value.some(video => video.status === 'PROCESSING'));
   })
 
   onUnmounted(() => {
