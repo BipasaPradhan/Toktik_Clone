@@ -33,3 +33,5 @@ spec:
           envFrom:
             - configMapRef:
                 name: redis-config
+            - secretRef:
+                name: jwt-secret

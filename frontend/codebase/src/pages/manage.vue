@@ -181,7 +181,7 @@
     try {
       loading.value = true
       const userId = authStore.username || ''
-      const response = await axios.get(`/videos/my`, {
+      const response = await axios.get(`/api/videos/my`, {
         params: { page: page.value, size: 20 },
         headers: { 'X-User-Id': userId },
       });
@@ -224,7 +224,7 @@
   const saveEdit = async () => {
     try {
       const userId = authStore.username || ''
-      await axios.put(`/videos/${editedVideo.value.id}`, {
+      await axios.put(`/api/videos/${editedVideo.value.id}`, {
         title: editedVideo.value.title,
         description: editedVideo.value.description,
         visibility: editedVideo.value.visibility,
@@ -262,7 +262,7 @@
     }
     try {
       const userId = authStore.username || '';
-      await axios.delete(`/videos/${videoToDelete.value}`, {
+      await axios.delete(`/api/videos/${videoToDelete.value}`, {
         headers: { 'X-User-Id': userId },
       });
       await fetchMyVideos();
@@ -380,7 +380,7 @@
   const patchViewCount = async (videoId: number) => {
     try {
       const userId = authStore.username || 'default';
-      const response = await axios.get(`/videos/${videoId}/view-count-total`, {
+      const response = await axios.get(`/api/videos/${videoId}/view-count-total`, {
         headers: { 'X-User-Id': userId },
       });
       const total = response.data.view_count;

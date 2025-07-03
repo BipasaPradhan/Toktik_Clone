@@ -41,10 +41,10 @@ run_on_node() {
 
 # === Step 1: Launch multipass VMs ===
 echo "[Step 1] Launching VMs..."
-multipass launch --name "$MASTER_NAME" --cpus $MASTER_CPUS --memory $MASTER_MEM --disk $MASTER_DISK --cloud-init cloud-init.yaml --network en0 || true
+multipass launch --name "$MASTER_NAME" --cpus $MASTER_CPUS --memory $MASTER_MEM --disk $MASTER_DISK --cloud-init cloud-init.yaml || true
 
 for w in "${WORKER_NAMES[@]}"; do
-  multipass launch --name "$w" --cpus $WORKER_CPUS --memory $WORKER_MEM --disk $WORKER_DISK --cloud-init cloud-init.yaml --network en0|| true
+  multipass launch --name "$w" --cpus $WORKER_CPUS --memory $WORKER_MEM --disk $WORKER_DISK --cloud-init cloud-init.yaml || true
 done
 echo "VMs launched."
 
