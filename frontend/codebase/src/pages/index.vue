@@ -357,7 +357,7 @@
 
   // Clean up WebSocket connection
   const disconnectWebSocket = () => {
-    if (stompClient.value && stompClient.value.active) {
+    if (stompClient.value) {
       subscriptions.value.forEach(subscription => subscription.unsubscribe());
       stompClient.value.deactivate();
       stompClient.value = null;
@@ -372,6 +372,7 @@
     fetchVideos()
     connectWebSocket();
     window.addEventListener('refreshVideos', refreshVideos)
+    updatePollingState(videos.value.some(video => video.status === 'PROCESSING'));
 
     // Refresh every 4.5 min
     refreshWsToken();
