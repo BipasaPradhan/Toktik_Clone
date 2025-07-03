@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.rest.webmvc.ResourceNotFoundException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -40,6 +41,7 @@ public class VideoService {
     private final RedisPublisher redisPublisher;
     private final RedisTemplate<String, Object> redisTemplate;
     private final RedisTemplate<String, Long> redisTemplateLong;
+    private final StringRedisTemplate stringRedisTemplate;
 
     @Value("${cloudflare.r2.bucket-name}")
     private String bucketName;
@@ -305,7 +307,7 @@ public class VideoService {
 
                 // Add user to VIP set
                 String vipKey = "video:" + videoId + ":vips";
-                Long added = redisTemplate.opsForSet().add(vipKey, userId);
+                Long added = stringRedisTemplate.opsForSet().add(vipKey, userId);
 
                 if (added != null && added == 1L) {
                     System.out.println("User " + userId + " added to VIP set for video " + videoId);

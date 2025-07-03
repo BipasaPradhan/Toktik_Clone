@@ -32,6 +32,7 @@
         if (response.data.success) {
           console.log('JWT Token:', response.data.data.token)
           localStorage.setItem('jwtToken', response.data.data.token);
+          sessionStorage.setItem('wsToken', response.data.data.wsToken);
           await authStore.login(response.data.data.username, response.data.data.token, response.data.data.role);
           console.log('Navigating to /');
           errorMessage.value = '';

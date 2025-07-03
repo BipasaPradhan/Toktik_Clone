@@ -40,14 +40,18 @@ public class AuthenticationController {
     @PostMapping("/api/login")
     public ResponseEntity<SimpleResponseDTO> login(
             @RequestParam String username,
-            @RequestParam String password
+            @RequestParam String password,
+            HttpServletResponse response
     ) {
         try {
             // Get the user object
             User user = loginService.login(username, password);
 
             // Generate the token
-            String token = jwtUtil.generateToken(user.getUsername());
+            String authToken = jwtUtil.generateToken(user.getUsername());
+
+            // Generate short web socket token (5 minutes)
+            String wsToken = jwtUtil.generateShortLivedToken(user.getUsername(), 5 * 60 * 1000);
 
             System.out.println("User " + username + " logged in successfully");
 
@@ -56,7 +60,8 @@ public class AuthenticationController {
                             .success(true)
                             .message("Login successful")
                             .data(Map.of(
-                                    "token", token,
+                                    "token", authToken,
+                                    "wsToken", wsToken,
                                     "username", user.getUsername(),
                                     "role", user.getRole()
                             ))
@@ -105,6 +110,45 @@ public class AuthenticationController {
         return ResponseEntity.ok(!exists);
     }
 
-
+    @GetMapping("/api/ws-token")
+    public ResponseEntity<SimpleResponseDTO> refreshWsToken(
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        try {
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(SimpleResponseDTO.builder()
+                                .success(false)
+                                .message("Authorization header missing or invalid")
+                                .build());
+            }
+            String jwt = authHeader.substring(7);
+            if (jwtUtil.validateJwtToken(jwt)) {
+                String username = jwtUtil.getUsernameFromToken(jwt);
+                String newWsToken = jwtUtil.generateShortLivedToken(username, 5 * 60 * 1000);
+                System.out.println("Generated new wsToken for user: " + username);
+                return ResponseEntity.ok(
+                        SimpleResponseDTO.builder()
+                                .success(true)
+                                .message("WebSocket token generated")
+                                .data(Map.of("wsToken", newWsToken))
+                                .build()
+                );
+            } else {
+                System.out.println("Invalid or expired JWT for wsToken refresh");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(SimpleResponseDTO.builder()
+                                .success(false)
+                                .message("Invalid or expired JWT")
+                                .build());
+            }
+        } catch (Exception e) {
+            System.out.println("Error generating wsToken: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(SimpleResponseDTO.builder()
+                            .success(false)
+                            .message("Error generating WebSocket token: " + e.getMessage())
+                            .build());
+        }
+    }
 
 }

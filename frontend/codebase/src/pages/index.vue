@@ -72,6 +72,7 @@
   import { Client, type StompSubscription } from '@stomp/stompjs'
   import SockJS from 'sockjs-client'
   import NotificationBell from '@/components/NotificationBell.vue';
+  import apiClient from '@/plugins/axios';
 
   const authStore = useAuthStore()
   const router = useRouter()
@@ -106,8 +107,8 @@
   const fetchVideos = async () => {
     try {
       loading.value = true
-      console.log('Fetching videos from:', `/api/videos/feed?page=${page.value}&size=20`)
-      const response = await axios.get(`/api/videos/feed`, {
+      console.log('Fetching videos from:', `/videos/feed?page=${page.value}&size=20`)
+      const response = await axios.get(`/videos/feed`, {
         params: { page: page.value, size: 20 },
       })
       console.log('Full API Response:', JSON.stringify(response.data, null, 2))
@@ -136,7 +137,7 @@
     try {
       const userId = authStore.username || ''
       console.log(`Fetching thumbnail for videoId ${videoId}, userId ${userId}`)
-      const response = await axios.get(`/api/videos/details`, {
+      const response = await axios.get(`/videos/details`, {
         params: { videoId, userId },
       })
       console.log('Thumbnail Response:', JSON.stringify(response.data, null, 2))
@@ -211,7 +212,16 @@
   }
 
   const connectWebSocket = () => {
-    const socket = new SockJS('/ws');
+    const rawWsToken = sessionStorage.getItem('wsToken');
+
+    if (!rawWsToken) {
+      console.warn('No JWT token found — skipping WebSocket connection.');
+      return;
+    }
+
+    const encodedToken = encodeURIComponent(rawWsToken);
+    const socket = new SockJS(`/ws?wsToken=${encodedToken}`);
+
     stompClient.value = new Client({
       webSocketFactory: () => socket,
       reconnectDelay: 5000,
@@ -278,7 +288,7 @@
   const patchViewCount = async (videoId: number) => {
     try {
       const userId = authStore.username || 'default'
-      const response = await axios.get(`/api/videos/${videoId}/view-count-total`, {
+      const response = await axios.get(`/videos/${videoId}/view-count-total`, {
         headers: { 'X-User-Id': userId },
       });
       const totalViewCount = response.data.view_count;
@@ -292,9 +302,62 @@
     }
   };
 
+  const refreshWsToken = async () => {
+    try {
+      const response = await apiClient.get('/api/ws-token');
+      if (response.data.success) {
+        const newWsToken = response.data.data.wsToken;
+        sessionStorage.setItem('wsToken', newWsToken);
+        console.log('Refreshed wsToken, now reconnecting WebSocket...')
+        reconnectWebSocket()
+      } else {
+        console.warn('Failed to refresh wsToken:', response.data.message);
+      }
+    } catch (err) {
+      console.error('Error refreshing wsToken:', err);
+    }
+  };
+
+  const reconnectWebSocket = () => {
+    const rawWsToken = sessionStorage.getItem('wsToken')
+    if (!rawWsToken) {
+      console.warn('No JWT token found — skipping WebSocket reconnection.')
+      return
+    }
+
+    // Unsubscribe old client
+    disconnectWebSocket()
+
+    const encodedToken = encodeURIComponent(rawWsToken)
+    const newSocket = new SockJS(`/ws?wsToken=${encodedToken}`)
+
+    const newClient = new Client({
+      webSocketFactory: () => newSocket,
+      reconnectDelay: 5000,
+      debug: str => console.log('STOMP:', str),
+    })
+
+    newClient.onConnect = () => {
+      console.log('Reconnected to WebSocket')
+
+      // Replace with new connection
+      stompClient.value = newClient
+      subscriptions.value.clear()
+      subscribeToViewUpdates()
+      subscribeToLikeUpdates()
+    }
+
+    newClient.onStompError = frame => {
+      console.error('STOMP error:', frame)
+    }
+
+    newClient.activate()
+  }
+
+
   // Clean up WebSocket connection
   const disconnectWebSocket = () => {
-    if (stompClient.value) {
+    if (stompClient.value && stompClient.value.active) {
       subscriptions.value.forEach(subscription => subscription.unsubscribe());
       stompClient.value.deactivate();
       stompClient.value = null;
@@ -302,11 +365,17 @@
     }
   };
 
+  let wsTokenRefreshInterval: number | null = null;
+
   // Fetch videos on mount
   onMounted(() => {
     fetchVideos()
     connectWebSocket();
     window.addEventListener('refreshVideos', refreshVideos)
+
+    // Refresh every 4.5 min
+    refreshWsToken();
+    wsTokenRefreshInterval = setInterval(refreshWsToken, 270000);
   })
 
   onUnmounted(() => {
@@ -316,6 +385,12 @@
       pollInterval = null
       isPolling.value = false
     }
+
+    if (wsTokenRefreshInterval) {
+      clearInterval(wsTokenRefreshInterval);
+      wsTokenRefreshInterval = null;
+    }
+
     disconnectWebSocket()
   })
 </script>

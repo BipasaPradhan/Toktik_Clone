@@ -3,6 +3,7 @@ package io.muzoo.ssc.project.backend.util;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
+import lombok.Getter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -11,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
 @Component
+@Getter
 public class JwtUtil {
     @Value("${jwt.secret}")
     private String jwtSecret;
@@ -62,4 +64,14 @@ public class JwtUtil {
         }
         return false;
     }
+
+    public String generateShortLivedToken(String username, int durationMillis) {
+        return Jwts.builder()
+                .subject(username)
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + durationMillis))
+                .signWith(key)
+                .compact();
+    }
+
 }

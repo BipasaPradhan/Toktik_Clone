@@ -54,9 +54,10 @@
   import { onMounted, onUnmounted, ref, watch } from 'vue';
   import { useRouter } from 'vue-router';
   import { useAuthStore } from '@/stores/auth';
-  import { Client } from '@stomp/stompjs';
+  import { Client, type StompSubscription } from '@stomp/stompjs';
   import SockJS from 'sockjs-client';
   import axios from 'axios';
+  import apiClient from '@/plugins/axios';
 
   type Notification = {
     message: string;
@@ -73,6 +74,7 @@
   const notifications = ref<Notification[]>([]);
   const unreadCount = ref(0);
   let stompClient: Client | null = null;
+  let notificationSubscription: StompSubscription | null = null;
 
   const extractVideoId = (msg: string): string | undefined => {
     const match = msg.match(/video '.*?' \(ID: (\d+)\)/);
@@ -82,7 +84,7 @@
   const fetchNotifications = async () => {
     if (!userId) return;
     try {
-      const response = await axios.get('/api/videos/notifications', {
+      const response = await axios.get('/videos/notifications', {
         headers: { 'X-User-Id': userId },
       });
 
@@ -118,7 +120,7 @@
     notifications.value[index].read = true;
     unreadCount.value = notifications.value.filter(n => !n.read).length;
     try {
-      await axios.post(`/api/videos/notifications/${index}/read`, {}, {
+      await axios.post(`/videos/notifications/${index}/read`, {}, {
         headers: { 'X-User-Id': userId },
       });
     } catch (error) {
@@ -144,7 +146,12 @@
   const connectWebSocket = () => {
     if (!userId) return;
 
-    const socket = new SockJS('/ws');
+    const rawWsToken = sessionStorage.getItem('wsToken');
+    if (!rawWsToken || !userId) return;
+
+    const encodedToken = encodeURIComponent(rawWsToken);
+    const socket = new SockJS(`/ws?wsToken=${encodedToken}`);
+
     stompClient = new Client({
       webSocketFactory: () => socket,
       reconnectDelay: 5000,
@@ -176,7 +183,85 @@
     stompClient.activate();
   };
 
+  let tokenRefreshInterval: number | null = null;
+
+  const refreshWsToken = async () => {
+    try {
+      const response = await apiClient.get('/api/ws-token');
+      if (response.data.success) {
+        const newToken = response.data.data.wsToken;
+        sessionStorage.setItem('wsToken', newToken);
+        console.log('Refreshed wsToken, reconnecting WebSocket...');
+        reconnectWebSocket();
+      } else {
+        console.warn('Failed to refresh wsToken:', response.data.message);
+      }
+    } catch (err) {
+      console.error('Error refreshing wsToken:', err);
+    }
+  };
+
+
+  const reconnectWebSocket = () => {
+    const rawWsToken = sessionStorage.getItem('wsToken');
+    if (!rawWsToken) {
+      console.warn('No JWT token found — skipping WebSocket reconnection.');
+      return;
+    }
+
+    // Unsubscribe old client
+    disconnectWebSocket();
+
+    const encodedToken = encodeURIComponent(rawWsToken);
+    const newSocket = new SockJS(`/ws?wsToken=${encodedToken}`);
+
+    const newClient = new Client({
+      webSocketFactory: () => newSocket,
+      reconnectDelay: 5000,
+      debug: str => console.log('STOMP (NotificationBell):', str),
+    });
+
+    newClient.onConnect = () => {
+      console.log('Reconnected to Notification WebSocket');
+
+      // Replace with new connection
+      stompClient = newClient;
+
+      // Resubscribe
+      const userId = authStore.username;
+      if (userId) {
+        notificationSubscription = stompClient.subscribe(`/user/${userId}/notifications`, message => {
+          const payload = JSON.parse(message.body);
+          const newNotification: Notification = {
+            message: payload.message,
+            timestamp: payload.timestamp,
+            read: String(payload.read) === 'true',
+            videoId: payload.videoId || extractVideoId(payload.message),
+          };
+
+          notifications.value.unshift(newNotification);
+          notifications.value = notifications.value
+            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+            .slice(0, 10);
+          unreadCount.value = notifications.value.filter(n => !n.read).length;
+        });
+      }
+    };
+
+    newClient.onStompError = frame => {
+      console.error('STOMP error in NotificationBell:', frame);
+    };
+
+    newClient.activate();
+  };
+
+
   const disconnectWebSocket = () => {
+    if (notificationSubscription) {
+      notificationSubscription.unsubscribe();
+      notificationSubscription = null;
+    }
+
     if (stompClient) {
       stompClient.deactivate();
       stompClient = null;
@@ -186,10 +271,19 @@
   onMounted(() => {
     fetchNotifications();
     connectWebSocket();
+
+
+    refreshWsToken();
+    tokenRefreshInterval = setInterval(refreshWsToken, 270000);
   });
 
   onUnmounted(() => {
     disconnectWebSocket();
+
+    if (tokenRefreshInterval) {
+      clearInterval(tokenRefreshInterval);
+      tokenRefreshInterval = null;
+    }
   });
 
   watch(() => authStore.username, newUserId => {

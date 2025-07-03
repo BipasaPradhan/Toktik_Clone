@@ -29,7 +29,9 @@ export const useAuthStore = defineStore('auth', {
       this.role = null
       this.token = null
       localStorage.removeItem('jwtToken');
+      sessionStorage.removeItem('wsToken')
       console.log('Auth store cleared: User logged out');
+      console.log('Auth store cleared: Web socket closed');
     },
   },
 })

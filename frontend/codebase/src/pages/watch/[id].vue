@@ -156,6 +156,7 @@
   import { Client } from '@stomp/stompjs';
   import SockJS from 'sockjs-client';
   import NotificationBell from '@/components/NotificationBell.vue';
+  import apiClient from '@/plugins/axios.ts';
 
   // Define the route params type
   interface RouteParams {
@@ -181,6 +182,8 @@
   const hlsBlobUrl = ref<string>('');
   const videoError = ref<string>('');
   const loading = ref(true);
+  const currentVideoId = ref<number | null>(null);
+
   let hlsInstance: Hls | null = null;
 
   const videoDetails = ref<{
@@ -228,17 +231,17 @@
     const userId = authStore.username || 'default';
     try {
       const [detailsResponse, commentsResponse, likeResponse, viewCountResponse] = await Promise.all([
-        axios.get(`/api/videos/details`, {
+        axios.get(`/videos/details`, {
           params: { videoId, userId },
           headers: { 'X-User-Id': userId },
         }),
-        axios.get(`/api/videos/${videoId}/comments`, {
+        axios.get(`/videos/${videoId}/comments`, {
           headers: { 'X-User-Id': userId },
         }),
-        axios.get(`/api/videos/${videoId}/is-liked`, {
+        axios.get(`/videos/${videoId}/is-liked`, {
           headers: { 'X-User-Id': userId },
         }),
-        axios.get(`/api/videos/${videoId}/view-count-total`, {
+        axios.get(`/videos/${videoId}/view-count-total`, {
           headers: { 'X-User-Id': userId },
         }),
       ]);
@@ -339,7 +342,7 @@
     toggleLikeLoading.value = true;
     likeError.value = '';
     try {
-      const response = await axios.post(`/api/videos/${route.params.id}/like`, {}, {
+      const response = await axios.post(`/videos/${route.params.id}/like`, {}, {
         headers: { 'X-User-Id': authStore.username },
       });
       const { isLiked: newIsLiked, likeCount: newLikeCount, success, error } = response.data;
@@ -379,7 +382,7 @@
   const incrementViewCount = async () => {
     try {
       console.log(`Incrementing view count for videoId=${route.params.id}`);
-      await axios.post(`/api/videos/${route.params.id}/views`, {}, {
+      await axios.post(`/videos/${route.params.id}/views`, {}, {
         headers: { 'X-User-Id': authStore.username },
       });
       console.log(`Successfully incremented view for videoId=${route.params.id}`);
@@ -410,7 +413,7 @@
 
     try {
       console.log(`Submitting comment for videoId=${route.params.id}, userId=${authStore.username}`);
-      await axios.post(`/api/videos/${route.params.id}/comments`, {
+      await axios.post(`/videos/${route.params.id}/comments`, {
         content: newComment.value,
       }, {
         headers: { 'X-User-Id': authStore.username },
@@ -434,8 +437,56 @@
     commentError.value = '';
   };
 
+  const subscribeToVideoTopics = (videoId: number) => {
+    if (!stompClient.value) return;
+
+    stompClient.value?.subscribe(`/topic/views/${videoId}`, message => {
+      const viewCount = parseInt(message.body);
+      console.log(`Received WebSocket view count for videoId=${videoId}: ${viewCount}`);
+      videoDetails.value.viewCount = viewCount;
+    });
+
+    stompClient.value?.subscribe(`/topic/comments/${videoId}`, message => {
+      const comment = JSON.parse(message.body);
+      console.log(`Received WebSocket comment for videoId=${videoId}:`, comment);
+      comments.value.push({
+        id: Number(comment.id),
+        videoId: Number(comment.video_id),
+        userId: comment.user_id,
+        content: comment.content,
+        createdAt: comment.created_at,
+      });
+    });
+
+    stompClient.value?.subscribe(`/topic/likes/${videoId}`, message => {
+      try {
+        const payload = JSON.parse(message.body);
+        if (payload.videoId == videoId.toString()) {
+          likeCount.value = parseInt(payload.likeCount);
+          // isLiked.value = payload.isLiked === 'true';
+          console.log('Updated like state from WebSocket:', {
+            likeCount: likeCount.value,
+            isLiked: isLiked.value,
+          });
+        }
+      } catch (err) {
+        console.error('Failed to parse like payload:', err, message.body);
+      }
+    });
+  };
+
+
   const connectWebSocket = (videoId: number) => {
-    const socket = new SockJS('/ws');
+    const rawWsToken = sessionStorage.getItem('wsToken');
+
+    if (!rawWsToken) {
+      console.warn('No JWT token found — skipping WebSocket connection.');
+      return;
+    }
+
+    const encodedToken = encodeURIComponent(rawWsToken);
+    const socket = new SockJS(`/ws?wsToken=${encodedToken}`);
+
     stompClient.value = new Client({
       webSocketFactory: () => socket,
       reconnectDelay: 5000,
@@ -444,42 +495,7 @@
 
     stompClient.value.onConnect = () => {
       console.log('Connected to WebSocket');
-      // Subscribe to view updates
-      stompClient.value?.subscribe(`/topic/views/${videoId}`, message => {
-        const viewCount = parseInt(message.body);
-        console.log(`Received WebSocket view count for videoId=${videoId}: ${viewCount}`);
-        videoDetails.value.viewCount = viewCount;
-      });
-      // Subscribe to comment updates
-      stompClient.value?.subscribe(`/topic/comments/${videoId}`, message => {
-        const comment = JSON.parse(message.body);
-        console.log(`Received WebSocket comment for videoId=${videoId}:`, comment);
-        comments.value.push({
-          id: Number(comment.id),
-          videoId: Number(comment.video_id),
-          userId: comment.user_id,
-          content: comment.content,
-          createdAt: comment.created_at,
-        });
-      });
-
-      // Subscribe to like updates
-      stompClient.value?.subscribe(`/topic/likes/${videoId}`, message => {
-        try {
-          const payload = JSON.parse(message.body);
-          if (payload.videoId == videoId.toString()) {
-            likeCount.value = parseInt(payload.likeCount);
-            isLiked.value = payload.isLiked === 'true'; // convert string to boolean
-            console.log('Updated like state from WebSocket:', {
-              likeCount: likeCount.value,
-              isLiked: isLiked.value,
-            });
-          }
-        } catch (err) {
-          console.error('Failed to parse like payload:', err, message.body);
-        }
-      });
-
+      subscribeToVideoTopics(videoId);
     };
 
     stompClient.value.onStompError = frame => {
@@ -490,12 +506,66 @@
     stompClient.value.activate();
   }
 
+  let wsTokenRefreshInterval: number | null = null;
+
+  const refreshWsToken = async () => {
+    try {
+      const response = await apiClient.get('/api/ws-token');
+      if (response.data.success) {
+        const newWsToken = response.data.data.wsToken;
+        sessionStorage.setItem('wsToken', newWsToken);
+        console.log('Refreshed wsToken, now reconnecting WebSocket...')
+        reconnectWebSocket()
+      } else {
+        console.warn('Failed to refresh wsToken:', response.data.message);
+      }
+    } catch (err) {
+      console.error('Error refreshing wsToken:', err);
+    }
+  };
+
+  const reconnectWebSocket = () => {
+    const rawWsToken = sessionStorage.getItem('wsToken')
+    if (!rawWsToken) {
+      console.warn('No JWT token found — skipping WebSocket reconnection.')
+      return
+    }
+    // Unsubscribe old client
+    disconnectWebSocket()
+
+    const encodedToken = encodeURIComponent(rawWsToken)
+    const newSocket = new SockJS(`/ws?wsToken=${encodedToken}`)
+
+    const newClient = new Client({
+      webSocketFactory: () => newSocket,
+      reconnectDelay: 5000,
+      debug: str => console.log('STOMP:', str),
+    })
+
+    newClient.onConnect = () => {
+      console.log('Reconnected to WebSocket')
+
+      // Replace with new connection
+      stompClient.value = newClient
+      if (currentVideoId.value !== null) {
+        subscribeToVideoTopics(currentVideoId.value);
+      }
+    }
+
+    newClient.onStompError = frame => {
+      console.error('STOMP error:', frame)
+    }
+
+    newClient.activate()
+  }
+
   // Clean up WebSocket connection
   const disconnectWebSocket = () => {
-    if (stompClient.value) {
+    console.log('Disconnected from WebSocket')
+    console.log('WebSocket active:', stompClient.value?.active);
+    if (stompClient.value && stompClient.value.active) {
       stompClient.value.deactivate();
       stompClient.value = null;
-      console.log('Disconnected from WebSocket')
     }
   }
 
@@ -503,6 +573,7 @@
   onMounted(() => {
     const videoId = (route.params as { id?: string }).id;
     if (videoId) {
+      currentVideoId.value = parseInt(videoId);
       fetchVideoDetails(parseInt(videoId));
       connectWebSocket(parseInt(videoId));
 
@@ -517,6 +588,10 @@
       loading.value = false;
       videoError.value = 'No video ID provided.';
     }
+
+    // Refresh every 4.5 min
+    refreshWsToken();
+    wsTokenRefreshInterval = setInterval(refreshWsToken, 270000);
   });
 
   onUnmounted(() => {
@@ -534,6 +609,11 @@
     if (hlsInstance) {
       hlsInstance.destroy();
       hlsInstance = null;
+    }
+
+    if (wsTokenRefreshInterval) {
+      clearInterval(wsTokenRefreshInterval);
+      wsTokenRefreshInterval = null;
     }
     disconnectWebSocket();
   });
