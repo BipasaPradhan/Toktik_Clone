@@ -14,6 +14,19 @@ spec:
     spec:
       imagePullSecrets:
         - name: ghcr-secret
+
+      initContainers:
+        - name: wait-for-redis
+          image: busybox
+          command:
+            - sh
+            - -c
+            - |
+              until nc -z redis 6379; do
+                echo "Waiting for Redis..."
+                sleep 2
+              done
+              
       containers:
         - name: video-processing-service
           image: ghcr.io/bipasapradhan/video-processing-service:latest
