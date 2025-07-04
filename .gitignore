@@ -27,3 +27,4 @@ k8s/r2-secret.yaml
 k8s/jwt-secret.yaml
 /k8s/secret
 k8s/cloud-init.yaml
+env (1).txt
