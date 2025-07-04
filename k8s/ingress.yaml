@@ -4,9 +4,9 @@ metadata:
   name: vms-ingress
   annotations:
     traefik.ingress.kubernetes.io/router.entrypoints: web
-    traefik.ingress.kubernetes.io/affinity: "true"
-    traefik.ingress.kubernetes.io/session-cookie-name: "websocket-session"
-    traefik.ingress.kubernetes.io/session-cookie-strategy: "cookie"
+    # traefik.ingress.kubernetes.io/affinity: "true"
+    # traefik.ingress.kubernetes.io/session-cookie-name: "websocket-session"
+    # traefik.ingress.kubernetes.io/session-cookie-strategy: "cookie"
 spec:
   rules:
       - http:
